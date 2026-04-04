@@ -593,16 +593,13 @@ class HookSocketServer {
                         "destination": "session"
                     ] as [String: Any]
                 ]
-            } else if alwaysAllow, let toolName = toolName {
-                // Allow All: addRules for this specific tool
+            } else if alwaysAllow {
+                // Allow All: use setMode to accept edits without asking
                 decisionDict["updatedPermissions"] = [
                     [
-                        "type": "addRules",
-                        "behavior": "allow",
-                        "destination": "session",
-                        "rules": [
-                            ["toolName": toolName]
-                        ]
+                        "type": "setMode",
+                        "mode": "acceptEdits",
+                        "destination": "session"
                     ] as [String: Any]
                 ]
             }
