@@ -125,6 +125,8 @@
 "instances.approve" = "Allow";
 "instances.allow_once" = "Allow Once";
 "instances.always_allow" = "Always Allow";
+"instances.allow_all" = "Allow All";
+"instances.auto_approve" = "Auto Approve";
 "instances.deny" = "Deny";
 
 /* Chat View */
@@ -141,6 +143,8 @@
 "chat.approve" = "Allow";
 "chat.allow_once" = "Allow Once";
 "chat.always_allow" = "Always Allow";
+"chat.allow_all" = "Allow All";
+"chat.auto_approve" = "Auto Approve";
 "chat.deny" = "Deny";
 "chat.terminal" = "Terminal";
 "chat.new_message" = "1 new message";

@@ -458,6 +458,7 @@ struct ChatView: View {
             terminalAppName: session.terminalAppName,
             onApprove: { approvePermission() },
             onAlwaysAllow: { alwaysAllowPermission() },
+            onAutoApprove: { autoApprovePermission() },
             onDeny: { denyPermission() }
         )
     }
@@ -501,6 +502,10 @@ struct ChatView: View {
 
     private func alwaysAllowPermission() {
         sessionMonitor.alwaysAllowPermission(sessionId: sessionId)
+    }
+
+    private func autoApprovePermission() {
+        sessionMonitor.autoApprovePermission(sessionId: sessionId)
     }
 
     private func denyPermission() {
@@ -1090,7 +1095,7 @@ struct ChatInteractivePromptBar: View {
 
 // MARK: - Chat Approval Bar
 
-/// Approval bar for the chat view with animated buttons (three-tier)
+/// Approval bar for the chat view with animated buttons (four-tier)
 struct ChatApprovalBar: View {
     let tool: String
     let toolInput: String?
@@ -1098,40 +1103,38 @@ struct ChatApprovalBar: View {
     let terminalAppName: String?
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
+    let onAutoApprove: () -> Void
     let onDeny: () -> Void
 
     @State private var showContent = false
-    @State private var showDenyButton = false
-    @State private var showAllowButton = false
-    @State private var showAlwaysAllowButton = false
+    @State private var showButtons = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Tool info + source/terminal badges
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(MCPToolFormatter.formatToolName(tool))
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
-                        .foregroundColor(TerminalColors.amber)
-                    if source != .claude {
-                        Text(source.displayName)
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                    if let termName = terminalAppName {
-                        Text(termName)
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.white.opacity(0.5))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
-                            .background(Color.white.opacity(0.06))
-                            .clipShape(Capsule())
-                    }
+            HStack(spacing: 6) {
+                Text(MCPToolFormatter.formatToolName(tool))
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundColor(TerminalColors.amber)
+                if source != .claude {
+                    Text(source.displayName)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Capsule())
                 }
+                if let termName = terminalAppName {
+                    Text(termName)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.5))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(Capsule())
+                }
+                Spacer()
                 if let input = toolInput {
                     Text(input)
                         .font(.system(size: 11))
@@ -1142,57 +1145,59 @@ struct ChatApprovalBar: View {
             .opacity(showContent ? 1 : 0)
             .offset(x: showContent ? 0 : -10)
 
-            Spacer()
+            // 4 buttons in a row
+            HStack(spacing: 6) {
+                // Deny
+                Button { onDeny() } label: {
+                    Text(String(localized: "chat.deny"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
 
-            // Deny button
-            Button {
-                onDeny()
-            } label: {
-                Text(String(localized: "chat.deny"))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.1))
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .opacity(showDenyButton ? 1 : 0)
-            .scaleEffect(showDenyButton ? 1 : 0.8)
+                // Allow Once
+                Button { onApprove() } label: {
+                    Text(String(localized: "chat.allow_once"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.9))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
 
-            // Allow Once button
-            Button {
-                onApprove()
-            } label: {
-                Text(String(localized: "chat.allow_once"))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.2))
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .opacity(showAllowButton ? 1 : 0)
-            .scaleEffect(showAllowButton ? 1 : 0.8)
+                // Allow All
+                Button { onAlwaysAllow() } label: {
+                    Text(String(localized: "chat.allow_all"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.25))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
 
-            // Always Allow button (most prominent)
-            Button {
-                onAlwaysAllow()
-            } label: {
-                Text(String(localized: "chat.always_allow"))
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.95))
-                    .clipShape(Capsule())
+                // Auto Approve
+                Button { onAutoApprove() } label: {
+                    Text(String(localized: "chat.auto_approve"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.9))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-            .opacity(showAlwaysAllowButton ? 1 : 0)
-            .scaleEffect(showAlwaysAllowButton ? 1 : 0.8)
+            .opacity(showButtons ? 1 : 0)
+            .scaleEffect(showButtons ? 1 : 0.95)
         }
-        .frame(minHeight: 44)  // Consistent height with other bars
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.black.opacity(0.2))
@@ -1200,14 +1205,8 @@ struct ChatApprovalBar: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.05)) {
                 showContent = true
             }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.1)) {
-                showDenyButton = true
-            }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.15)) {
-                showAllowButton = true
-            }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.2)) {
-                showAlwaysAllowButton = true
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.12)) {
+                showButtons = true
             }
         }
     }

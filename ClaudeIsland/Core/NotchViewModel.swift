@@ -27,6 +27,7 @@ enum NotchContentType: Equatable {
     case instances
     case menu
     case chat(SessionState)
+    case approval(SessionState)
     case hookSetup
     case onboarding
 
@@ -35,6 +36,7 @@ enum NotchContentType: Equatable {
         case .instances: return "instances"
         case .menu: return "menu"
         case .chat(let session): return "chat-\(session.sessionId)"
+        case .approval(let session): return "approval-\(session.sessionId)"
         case .hookSetup: return "hookSetup"
         case .onboarding: return "onboarding"
         }
@@ -80,6 +82,11 @@ class NotchViewModel: ObservableObject {
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
                 height: 580 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
+            )
+        case .approval:
+            return CGSize(
+                width: min(screenRect.width * 0.45, 560),
+                height: 480
             )
         case .instances:
             return CGSize(
@@ -152,9 +159,10 @@ class NotchViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    /// Whether we're in chat mode (sticky behavior)
+    /// Whether we're in a sticky mode (don't close on notch click)
     private var isInChatMode: Bool {
         if case .chat = contentType { return true }
+        if case .approval = contentType { return true }
         return false
     }
 

@@ -125,6 +125,8 @@
 "instances.approve" = "允许";
 "instances.allow_once" = "允许一次";
 "instances.always_allow" = "始终允许";
+"instances.allow_all" = "全部允许";
+"instances.auto_approve" = "自动批准";
 "instances.deny" = "拒绝";
 
 /* Chat View */
@@ -141,6 +143,8 @@
 "chat.approve" = "允许";
 "chat.allow_once" = "允许一次";
 "chat.always_allow" = "始终允许";
+"chat.allow_all" = "全部允许";
+"chat.auto_approve" = "自动批准";
 "chat.deny" = "拒绝";
 "chat.terminal" = "终端";
 "chat.new_message" = "1 条新消息";

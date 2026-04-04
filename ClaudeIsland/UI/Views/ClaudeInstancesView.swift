@@ -76,7 +76,9 @@ struct ClaudeInstancesView: View {
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
                         onAlwaysAllow: { alwaysAllowSession(session) },
-                        onReject: { rejectSession(session) }
+                        onAutoApprove: { autoApproveSession(session) },
+                        onReject: { rejectSession(session) },
+                        onShowApprovalDetail: { showApprovalDetail(session) }
                     )
                     .id(session.stableId)
                 }
@@ -106,8 +108,18 @@ struct ClaudeInstancesView: View {
         sessionMonitor.alwaysAllowPermission(sessionId: session.sessionId)
     }
 
+    private func autoApproveSession(_ session: SessionState) {
+        sessionMonitor.autoApprovePermission(sessionId: session.sessionId)
+    }
+
     private func rejectSession(_ session: SessionState) {
         sessionMonitor.denyPermission(sessionId: session.sessionId, reason: nil)
+    }
+
+    private func showApprovalDetail(_ session: SessionState) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            viewModel.contentType = .approval(session)
+        }
     }
 
     private func archiveSession(_ session: SessionState) {
@@ -124,7 +136,9 @@ struct InstanceRow: View {
     let onArchive: () -> Void
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
+    let onAutoApprove: () -> Void
     let onReject: () -> Void
+    let onShowApprovalDetail: () -> Void
 
     @State private var isHovered = false
     @State private var spinnerPhase = 0
@@ -278,9 +292,9 @@ struct InstanceRow: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
             } else if isWaitingForApproval {
                 InlineApprovalButtons(
-                    onChat: onChat,
                     onApprove: onApprove,
                     onAlwaysAllow: onAlwaysAllow,
+                    onAutoApprove: onAutoApprove,
                     onReject: onReject
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -312,8 +326,12 @@ struct InstanceRow: View {
         .padding(.trailing, 14)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) {
-            onChat()
+        .onTapGesture {
+            if isWaitingForApproval && !isInteractiveTool {
+                onShowApprovalDetail()
+            } else {
+                onChat()
+            }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isWaitingForApproval)
         .background(
@@ -385,35 +403,28 @@ struct InstanceRow: View {
 
 // MARK: - Inline Approval Buttons
 
-/// Compact inline approval buttons with staggered animation (three-tier: Deny / Allow Once / Always Allow)
+/// Compact inline approval buttons with staggered animation (four-tier: Deny / Allow Once / Allow All / Auto Approve)
 struct InlineApprovalButtons: View {
-    let onChat: () -> Void
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
+    let onAutoApprove: () -> Void
     let onReject: () -> Void
 
-    @State private var showChatButton = false
     @State private var showDenyButton = false
     @State private var showAllowButton = false
     @State private var showAlwaysAllowButton = false
+    @State private var showAutoApproveButton = false
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Chat button
-            IconButton(icon: "bubble.left") {
-                onChat()
-            }
-            .opacity(showChatButton ? 1 : 0)
-            .scaleEffect(showChatButton ? 1 : 0.8)
-
+        HStack(spacing: 5) {
             // Deny
             Button {
                 onReject()
             } label: {
                 Text(String(localized: "instances.deny"))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.white.opacity(0.6))
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 5)
                     .background(Color.white.opacity(0.1))
                     .clipShape(Capsule())
@@ -427,45 +438,61 @@ struct InlineApprovalButtons: View {
                 onApprove()
             } label: {
                 Text(String(localized: "instances.allow_once"))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.white.opacity(0.9))
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.2))
+                    .background(Color.white.opacity(0.18))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .opacity(showAllowButton ? 1 : 0)
             .scaleEffect(showAllowButton ? 1 : 0.8)
 
-            // Always Allow (most prominent)
+            // Allow All (for this tool)
             Button {
                 onAlwaysAllow()
             } label: {
-                Text(String(localized: "instances.always_allow"))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 8)
+                Text(String(localized: "instances.allow_all"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.9))
+                    .background(Color.white.opacity(0.28))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .opacity(showAlwaysAllowButton ? 1 : 0)
             .scaleEffect(showAlwaysAllowButton ? 1 : 0.8)
+
+            // Auto Approve (most prominent)
+            Button {
+                onAutoApprove()
+            } label: {
+                Text(String(localized: "instances.auto_approve"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.9))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showAutoApproveButton ? 1 : 0)
+            .scaleEffect(showAutoApproveButton ? 1 : 0.8)
         }
         .onAppear {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.0)) {
-                showChatButton = true
-            }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.05)) {
                 showDenyButton = true
             }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.1)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.05)) {
                 showAllowButton = true
             }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.15)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.1)) {
                 showAlwaysAllowButton = true
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.15)) {
+                showAutoApproveButton = true
             }
         }
     }

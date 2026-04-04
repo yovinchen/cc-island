@@ -403,6 +403,12 @@ struct NotchView: View {
                     sessionMonitor: sessionMonitor,
                     viewModel: viewModel
                 )
+            case .approval(let session):
+                ApprovalDetailView(
+                    session: session,
+                    sessionMonitor: sessionMonitor,
+                    viewModel: viewModel
+                )
             case .hookSetup:
                 HookSetupView {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -472,10 +478,13 @@ struct NotchView: View {
         let currentIds = Set(sessions.map { $0.stableId })
         let newPendingIds = currentIds.subtracting(previousPendingIds)
 
-        if !newPendingIds.isEmpty &&
-           viewModel.status == .closed &&
-           !TerminalVisibilityDetector.isTerminalVisibleOnCurrentSpace() {
-            viewModel.notchOpen(reason: .notification, presentationMode: .manualOpen)
+        if !newPendingIds.isEmpty {
+            // Auto-expand notch when new permission request arrives
+            // Use .manualOpen so it stays open until user acts (won't auto-collapse)
+            if viewModel.status == .closed &&
+               !TerminalVisibilityDetector.isTerminalVisibleOnCurrentSpace() {
+                viewModel.notchOpen(reason: .notification, presentationMode: .manualOpen)
+            }
         }
 
         previousPendingIds = currentIds
