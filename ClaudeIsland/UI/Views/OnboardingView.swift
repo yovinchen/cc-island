@@ -21,7 +21,7 @@ struct OnboardingView: View {
 
     private let allTools: [SessionSource] = [
         .claude, .codexCLI, .gemini, .cursor, .opencode, .copilot,
-        .factory, .qoder, .droid, .codebuddy
+        .qoder, .droid, .codebuddy, .trae
     ]
 
     var body: some View {

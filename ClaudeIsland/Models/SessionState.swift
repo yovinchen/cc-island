@@ -17,9 +17,9 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
     case gemini
     case copilot
     case codebuddy
-    case factory
     case qoder
     case droid
+    case trae
     case unknown
 
     init(rawSource: String?) {
@@ -45,12 +45,12 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
             self = .copilot
         case "codebuddy":
             self = .codebuddy
-        case "factory":
-            self = .factory
         case "qoder":
             self = .qoder
         case "droid":
             self = .droid
+        case "trae":
+            self = .trae
         default:
             self = .unknown
         }
@@ -67,9 +67,9 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
         case .gemini: return "Gemini"
         case .copilot: return "Copilot"
         case .codebuddy: return "CodeBuddy"
-        case .factory: return "Factory"
         case .qoder: return "Qoder"
         case .droid: return "Droid"
+        case .trae: return "Trae"
         case .unknown: return "Unknown"
         }
     }

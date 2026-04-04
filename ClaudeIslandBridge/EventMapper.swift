@@ -3,7 +3,7 @@
 //  ClaudeIslandBridge
 //
 //  Maps events from various AI tools into the unified ClaudeIsland protocol.
-//  Supports: Claude, Codex, Gemini, Cursor, OpenCode, Copilot, Factory, Qoder, Droid, CodeBuddy.
+//  Supports: Claude, Codex, Gemini, Cursor, OpenCode, Copilot, Qoder, Droid, CodeBuddy, Trae.
 //
 
 import Foundation

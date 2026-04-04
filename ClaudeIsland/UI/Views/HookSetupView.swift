@@ -20,7 +20,7 @@ struct HookSetupView: View {
 
     private let allTools: [SessionSource] = [
         .claude, .codexCLI, .gemini, .cursor, .opencode, .copilot,
-        .factory, .qoder, .droid, .codebuddy
+        .qoder, .droid, .codebuddy, .trae
     ]
 
     var body: some View {
@@ -274,10 +274,10 @@ struct ToolSetupRow: View {
         case .cursor: return "~/.cursor/hooks.json"
         case .opencode: return "~/.config/opencode/plugins/"
         case .copilot: return "~/.copilot/config.json"
-        case .factory: return "~/.factory/settings.json"
         case .qoder: return "~/.qoder/settings.json"
         case .droid: return "~/.droid/settings.json"
         case .codebuddy: return "~/.codebuddy/settings.json"
+        case .trae: return "~/.trae/settings.json"
         default: return ""
         }
     }

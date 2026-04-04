@@ -41,10 +41,10 @@ struct HookInstaller {
         CursorHookSource(),
         OpenCodeHookSource(),
         CopilotHookSource(),
-        FactoryHookSource(),
         QoderHookSource(),
         DroidHookSource(),
-        CodeBuddyHookSource()
+        CodeBuddyHookSource(),
+        TraeHookSource()
     ]
 
     /// Get bridge path for internal use (may contain spaces, not for hook commands)
@@ -211,11 +211,6 @@ struct HookInstaller {
             installed.append(.copilot)
         }
 
-        // Factory: check ~/.factory
-        if fm.fileExists(atPath: "\(home)/.factory") {
-            installed.append(.factory)
-        }
-
         // Qoder: check ~/.qoder
         if fm.fileExists(atPath: "\(home)/.qoder") {
             installed.append(.qoder)
@@ -229,6 +224,11 @@ struct HookInstaller {
         // CodeBuddy: check ~/.codebuddy
         if fm.fileExists(atPath: "\(home)/.codebuddy") {
             installed.append(.codebuddy)
+        }
+
+        // Trae: check ~/.trae
+        if fm.fileExists(atPath: "\(home)/.trae") {
+            installed.append(.trae)
         }
 
         return installed
@@ -1017,7 +1017,7 @@ struct CopilotHookSource: HookSource {
     }
 }
 
-// MARK: - Generic JSON Settings Hook Source (shared by Factory, Qoder, Droid, CodeBuddy)
+// MARK: - Generic JSON Settings Hook Source (shared by Qoder, Droid, CodeBuddy, Trae)
 
 private struct GenericSettingsHookSource: HookSource {
     let sourceType: SessionSource
@@ -1105,20 +1105,6 @@ private struct GenericSettingsHookSource: HookSource {
     }
 }
 
-// MARK: - Factory Hook Source
-
-struct FactoryHookSource: HookSource {
-    private let inner = GenericSettingsHookSource(
-        sourceType: .factory, displayName: "Factory", configDir: ".factory", sourceName: "factory"
-    )
-    var sourceType: SessionSource { inner.sourceType }
-    var displayName: String { inner.displayName }
-    var configPath: String { inner.configPath }
-    func install(bridgePath: String) throws { try inner.install(bridgePath: bridgePath) }
-    func uninstall() throws { try inner.uninstall() }
-    func isInstalled() -> Bool { inner.isInstalled() }
-}
-
 // MARK: - Qoder Hook Source
 
 struct QoderHookSource: HookSource {
@@ -1152,6 +1138,20 @@ struct DroidHookSource: HookSource {
 struct CodeBuddyHookSource: HookSource {
     private let inner = GenericSettingsHookSource(
         sourceType: .codebuddy, displayName: "CodeBuddy", configDir: ".codebuddy", sourceName: "codebuddy"
+    )
+    var sourceType: SessionSource { inner.sourceType }
+    var displayName: String { inner.displayName }
+    var configPath: String { inner.configPath }
+    func install(bridgePath: String) throws { try inner.install(bridgePath: bridgePath) }
+    func uninstall() throws { try inner.uninstall() }
+    func isInstalled() -> Bool { inner.isInstalled() }
+}
+
+// MARK: - Trae Hook Source
+
+struct TraeHookSource: HookSource {
+    private let inner = GenericSettingsHookSource(
+        sourceType: .trae, displayName: "Trae", configDir: ".trae", sourceName: "trae"
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
