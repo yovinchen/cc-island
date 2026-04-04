@@ -129,7 +129,8 @@ struct InstanceRow: View {
     @State private var isHovered = false
     @State private var spinnerPhase = 0
     @State private var isYabaiAvailable = false
-    @State private var showApprovalUI = false
+    /// Grace period flag: keeps approval UI visible for 2s after phase leaves waitingForApproval
+    @State private var keepApprovalVisible = false
     @State private var approvalShowTime: Date? = nil
 
     private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
@@ -137,9 +138,9 @@ struct InstanceRow: View {
     private let spinnerTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
     private let minApprovalDisplaySeconds: TimeInterval = 2.0
 
-    /// Whether we're showing the approval UI (with minimum display time protection)
+    /// Whether we're showing the approval UI: real phase OR grace period
     private var isWaitingForApproval: Bool {
-        showApprovalUI
+        session.phase.isWaitingForApproval || keepApprovalVisible
     }
 
     /// Whether the pending tool requires interactive input (not just approve/deny)
@@ -324,35 +325,29 @@ struct InstanceRow: View {
             isYabaiAvailable = await WindowFinder.shared.isYabaiAvailable()
         }
         .onChange(of: session.phase) { oldPhase, newPhase in
-            if newPhase.isWaitingForApproval && !showApprovalUI {
-                showApprovalUI = true
+            if newPhase.isWaitingForApproval {
+                // Entering approval: record timestamp, clear grace period
                 approvalShowTime = Date()
-            } else if !newPhase.isWaitingForApproval && showApprovalUI {
-                // Check minimum display time
+                keepApprovalVisible = false
+            } else if oldPhase.isWaitingForApproval {
+                // Leaving approval: start grace period
                 if let showTime = approvalShowTime {
                     let elapsed = Date().timeIntervalSince(showTime)
-                    if elapsed >= minApprovalDisplaySeconds {
-                        showApprovalUI = false
-                        approvalShowTime = nil
-                    } else {
+                    if elapsed < minApprovalDisplaySeconds {
+                        keepApprovalVisible = true
                         let remaining = minApprovalDisplaySeconds - elapsed
                         DispatchQueue.main.asyncAfter(deadline: .now() + remaining) {
-                            // Only hide if still not waiting for approval
                             if !session.phase.isWaitingForApproval {
-                                showApprovalUI = false
-                                approvalShowTime = nil
+                                keepApprovalVisible = false
                             }
                         }
                     }
-                } else {
-                    showApprovalUI = false
                 }
+                approvalShowTime = nil
             }
         }
         .onAppear {
-            // Initialize approval UI state from current phase
             if session.phase.isWaitingForApproval {
-                showApprovalUI = true
                 approvalShowTime = Date()
             }
         }

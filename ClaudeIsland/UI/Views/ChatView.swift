@@ -41,20 +41,22 @@ struct ChatView: View {
         self._hasLoadedOnce = State(initialValue: alreadyLoaded)
     }
 
-    @State private var showApprovalUI = false
+    /// Grace period flag: keeps approval UI visible for 2s after phase leaves waitingForApproval
+    @State private var keepApprovalVisible = false
     @State private var approvalShowTime: Date? = nil
     @State private var cachedApprovalTool: String? = nil
     private let minApprovalDisplaySeconds: TimeInterval = 2.0
 
-    /// Whether we're waiting for approval (with minimum display time protection)
+    /// Whether we're waiting for approval: real phase OR grace period
     private var isWaitingForApproval: Bool {
-        showApprovalUI
+        session.phase.isWaitingForApproval || keepApprovalVisible
     }
 
     /// Extract the tool name if waiting for approval
     private var approvalTool: String? {
-        if showApprovalUI {
-            return cachedApprovalTool ?? session.phase.approvalToolName
+        // During grace period, use cached tool name
+        if keepApprovalVisible, let cached = cachedApprovalTool {
+            return cached
         }
         return session.phase.approvalToolName
     }
@@ -154,38 +156,35 @@ struct ChatView: View {
         .onReceive(sessionMonitor.$instances) { sessions in
             if let updated = sessions.first(where: { $0.sessionId == sessionId }),
                updated != session {
-                // Check if permission was just accepted (transition from waitingForApproval to processing)
                 let wasWaiting = isWaitingForApproval
                 let oldPhase = session.phase
                 session = updated
                 let isNowProcessing = updated.phase == .processing
 
                 // Manage approval UI minimum display time
-                if updated.phase.isWaitingForApproval && !showApprovalUI {
-                    showApprovalUI = true
+                if updated.phase.isWaitingForApproval {
+                    // Entering approval: record timestamp, cache tool name
                     approvalShowTime = Date()
                     cachedApprovalTool = updated.phase.approvalToolName
-                } else if !updated.phase.isWaitingForApproval && showApprovalUI {
+                    keepApprovalVisible = false
+                } else if oldPhase.isWaitingForApproval {
+                    // Leaving approval: start grace period if needed
                     if let showTime = approvalShowTime {
                         let elapsed = Date().timeIntervalSince(showTime)
-                        if elapsed >= minApprovalDisplaySeconds {
-                            showApprovalUI = false
-                            approvalShowTime = nil
-                            cachedApprovalTool = nil
-                        } else {
+                        if elapsed < minApprovalDisplaySeconds {
+                            keepApprovalVisible = true
                             let remaining = minApprovalDisplaySeconds - elapsed
                             DispatchQueue.main.asyncAfter(deadline: .now() + remaining) {
                                 if !session.phase.isWaitingForApproval {
-                                    showApprovalUI = false
-                                    approvalShowTime = nil
+                                    keepApprovalVisible = false
                                     cachedApprovalTool = nil
                                 }
                             }
+                        } else {
+                            cachedApprovalTool = nil
                         }
-                    } else {
-                        showApprovalUI = false
-                        cachedApprovalTool = nil
                     }
+                    approvalShowTime = nil
                 }
 
                 if wasWaiting && isNowProcessing {
@@ -207,7 +206,6 @@ struct ChatView: View {
         .onAppear {
             // Initialize approval UI state from current session phase
             if session.phase.isWaitingForApproval {
-                showApprovalUI = true
                 approvalShowTime = Date()
                 cachedApprovalTool = session.phase.approvalToolName
             }
