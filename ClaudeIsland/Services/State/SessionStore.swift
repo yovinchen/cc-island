@@ -148,7 +148,25 @@ actor SessionStore {
 
         let newPhase = event.determinePhase()
 
-        if session.phase.canTransition(to: newPhase) {
+        // Guard: while waiting for approval, only allow phase changes from:
+        // 1. A new PermissionRequest (another tool needs approval)
+        // 2. PreCompact (context compaction)
+        // 3. Session ended (already handled above)
+        // Other events (PostToolUse, Stop, etc.) must NOT overwrite the approval state,
+        // as the user hasn't responded yet. The approval UI must persist until explicit action.
+        let shouldBlockPhaseChange: Bool = {
+            guard case .waitingForApproval = session.phase else { return false }
+            // Allow new permission requests to override
+            if case .waitingForApproval = newPhase { return false }
+            // Allow compacting
+            if case .compacting = newPhase { return false }
+            // Block all other transitions while waiting for user action
+            return true
+        }()
+
+        if shouldBlockPhaseChange {
+            Self.logger.debug("Blocking phase change from waitingForApproval -> \(String(describing: newPhase), privacy: .public) (event: \(event.event ?? "nil", privacy: .public))")
+        } else if session.phase.canTransition(to: newPhase) {
             session.phase = newPhase
         } else {
             Self.logger.debug("Invalid transition: \(String(describing: session.phase), privacy: .public) -> \(String(describing: newPhase), privacy: .public), ignoring")

@@ -53,10 +53,9 @@ class ClaudeSessionMonitor: ObservableObject {
                     }
                 }
 
-                if event.event == "Stop" {
-                    HookSocketServer.shared.cancelPendingPermissions(sessionId: event.sessionId)
-                }
-
+                // Only cancel pending permissions when the tool itself completes
+                // (i.e., was approved in the terminal). Do NOT cancel on "Stop" events,
+                // as the user may still want to respond via the notch UI.
                 if event.event == "PostToolUse", let toolUseId = event.toolUseId {
                     HookSocketServer.shared.cancelPendingPermission(toolUseId: toolUseId)
                 }
