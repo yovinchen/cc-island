@@ -27,6 +27,7 @@ struct HookEvent: Decodable, Sendable {
     let toolUseId: String?
     let notificationType: String?
     let message: String?
+    let rateLimits: [String: AnyCodable]?
 
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
@@ -39,6 +40,7 @@ struct HookEvent: Decodable, Sendable {
         case toolUseId = "tool_use_id"
         case notificationType = "notification_type"
         case message
+        case rateLimits = "rate_limits"
     }
 
     init(from decoder: Decoder) throws {
@@ -63,10 +65,11 @@ struct HookEvent: Decodable, Sendable {
         toolUseId = try container.decodeIfPresent(String.self, forKey: .toolUseId)
         notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
         message = try container.decodeIfPresent(String.self, forKey: .message)
+        rateLimits = try container.decodeIfPresent([String: AnyCodable].self, forKey: .rateLimits)
     }
 
     /// Create a copy with updated toolUseId
-    init(sessionId: String, source: SessionSource, cwd: String, event: String, status: String, pid: Int?, tty: String?, approvalChannel: ApprovalChannel, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
+    init(sessionId: String, source: SessionSource, cwd: String, event: String, status: String, pid: Int?, tty: String?, approvalChannel: ApprovalChannel, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?, rateLimits: [String: AnyCodable]? = nil) {
         self.sessionId = sessionId
         self.source = source
         self.cwd = cwd
@@ -80,6 +83,7 @@ struct HookEvent: Decodable, Sendable {
         self.toolUseId = toolUseId
         self.notificationType = notificationType
         self.message = message
+        self.rateLimits = rateLimits
     }
 
     var sessionPhase: SessionPhase {
@@ -490,7 +494,8 @@ class HookSocketServer {
                 toolInput: event.toolInput,
                 toolUseId: toolUseId,  // Use resolved toolUseId
                 notificationType: event.notificationType,
-                message: event.message
+                message: event.message,
+                rateLimits: event.rateLimits
             )
 
             let pending = PendingPermission(

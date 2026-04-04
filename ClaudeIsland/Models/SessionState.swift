@@ -192,6 +192,11 @@ struct SessionState: Equatable, Identifiable, Sendable {
     /// This removes pre-/clear items that no longer exist in the JSONL
     var needsClearReconciliation: Bool
 
+    // MARK: - Usage Data
+
+    /// API usage and context window data for this session
+    var usageData: UsageData
+
     // MARK: - Timestamps
 
     var lastActivity: Date
@@ -227,6 +232,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
             lastToolName: nil, firstUserMessage: nil, lastUserMessageDate: nil
         ),
         needsClearReconciliation: Bool = false,
+        usageData: UsageData = .empty,
         lastActivity: Date = Date(),
         createdAt: Date = Date()
     ) {
@@ -244,6 +250,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         self.subagentState = subagentState
         self.conversationInfo = conversationInfo
         self.needsClearReconciliation = needsClearReconciliation
+        self.usageData = usageData
         self.lastActivity = lastActivity
         self.createdAt = createdAt
     }

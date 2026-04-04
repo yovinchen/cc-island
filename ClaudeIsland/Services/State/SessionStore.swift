@@ -169,6 +169,20 @@ actor SessionStore {
         if event.shouldSyncFile {
             scheduleFileSync(sessionId: sessionId, cwd: event.cwd)
         }
+
+        // Process rate limits if present
+        if let rateLimits = event.rateLimits {
+            var rateLimitsDict: [String: Any] = [:]
+            for (key, value) in rateLimits {
+                rateLimitsDict[key] = value.value
+            }
+            await MainActor.run {
+                UsageDataManager.shared.updateFromHookEvent(
+                    sessionId: sessionId,
+                    rateLimits: rateLimitsDict
+                )
+            }
+        }
     }
 
     private func createSession(from event: HookEvent) -> SessionState {
