@@ -123,6 +123,8 @@
 "instances.user_prefix" = "You:";
 "instances.go_to_terminal" = "Go to Terminal";
 "instances.approve" = "Allow";
+"instances.allow_once" = "Allow Once";
+"instances.always_allow" = "Always Allow";
 "instances.deny" = "Deny";
 
 /* Chat View */
@@ -137,6 +139,8 @@
 "chat.interrupted" = "Interrupted";
 "chat.needs_input" = "Claude Code needs your input";
 "chat.approve" = "Allow";
+"chat.allow_once" = "Allow Once";
+"chat.always_allow" = "Always Allow";
 "chat.deny" = "Deny";
 "chat.terminal" = "Terminal";
 "chat.new_message" = "1 new message";

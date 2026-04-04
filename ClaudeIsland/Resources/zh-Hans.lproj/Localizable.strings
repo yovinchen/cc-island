@@ -123,6 +123,8 @@
 "instances.user_prefix" = "你:";
 "instances.go_to_terminal" = "前往终端";
 "instances.approve" = "允许";
+"instances.allow_once" = "允许一次";
+"instances.always_allow" = "始终允许";
 "instances.deny" = "拒绝";
 
 /* Chat View */
@@ -137,6 +139,8 @@
 "chat.interrupted" = "已中断";
 "chat.needs_input" = "Claude Code 需要您的输入";
 "chat.approve" = "允许";
+"chat.allow_once" = "允许一次";
+"chat.always_allow" = "始终允许";
 "chat.deny" = "拒绝";
 "chat.terminal" = "终端";
 "chat.new_message" = "1 条新消息";
