@@ -135,6 +135,9 @@ actor SessionStore {
         }
         session.source = event.source
         session.approvalChannel = event.resolvedApprovalChannel
+        if let eventEnv = event.env {
+            session.env = eventEnv
+        }
         session.lastActivity = Date()
 
         if event.status == "ended" {

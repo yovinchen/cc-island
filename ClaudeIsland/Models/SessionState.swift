@@ -173,6 +173,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
     var tty: String?
     var isInTmux: Bool
     var approvalChannel: ApprovalChannel
+    var env: [String: String]?
 
     // MARK: - State Machine
 
@@ -235,6 +236,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         tty: String? = nil,
         isInTmux: Bool = false,
         approvalChannel: ApprovalChannel = .none,
+        env: [String: String]? = nil,
         phase: SessionPhase = .idle,
         chatItems: [ChatHistoryItem] = [],
         toolTracker: ToolTracker = ToolTracker(),
@@ -256,6 +258,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         self.tty = tty
         self.isInTmux = isInTmux
         self.approvalChannel = approvalChannel
+        self.env = env
         self.phase = phase
         self.chatItems = chatItems
         self.toolTracker = toolTracker
@@ -350,6 +353,28 @@ struct SessionState: Equatable, Identifiable, Sendable {
     /// Whether the session can be interacted with
     var canInteract: Bool {
         phase.needsAttention
+    }
+
+    /// Human-readable terminal app name derived from TERM_PROGRAM env var
+    var terminalAppName: String? {
+        guard let termProgram = env?["TERM_PROGRAM"] else { return nil }
+        switch termProgram.lowercased() {
+        case "apple_terminal": return "Terminal"
+        case "iterm.app": return "iTerm2"
+        case "ghostty": return "Ghostty"
+        case "wezterm": return "WezTerm"
+        case "alacritty": return "Alacritty"
+        case "kitty": return "Kitty"
+        case "hyper": return "Hyper"
+        case "tmux": return "tmux"
+        case "vscode": return "VS Code"
+        default: return termProgram
+        }
+    }
+
+    /// Whether the terminal can be focused (tmux or known terminal app)
+    var canFocusTerminal: Bool {
+        isInTmux || env?["TERM_PROGRAM"] != nil
     }
 }
 
