@@ -116,6 +116,26 @@ class ClaudeSessionMonitor: ObservableObject {
         }
     }
 
+    func allowAllPermission(sessionId: String) {
+        Task {
+            guard let session = await SessionStore.shared.session(for: sessionId),
+                  let permission = session.activePermission else {
+                return
+            }
+
+            HookSocketServer.shared.respondToPermission(
+                toolUseId: permission.toolUseId,
+                decision: "allow",
+                allowAll: true,
+                source: session.source
+            )
+
+            await SessionStore.shared.process(
+                .permissionApproved(sessionId: sessionId, toolUseId: permission.toolUseId)
+            )
+        }
+    }
+
     func autoApprovePermission(sessionId: String) {
         Task {
             guard let session = await SessionStore.shared.session(for: sessionId),
