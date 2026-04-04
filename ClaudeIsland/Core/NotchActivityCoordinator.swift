@@ -3,6 +3,7 @@
 //  ClaudeIsland
 //
 //  Coordinates live activities and expanding views for the notch
+//  Includes auto-expand on task complete, auto-collapse, and idle-hide logic
 //
 
 import Combine
@@ -65,7 +66,9 @@ class NotchActivityCoordinator: ObservableObject {
     var activityDuration: TimeInterval = 0 // 0 = manual control (won't auto-hide)
 
     /// Duration before auto-collapsing after an auto-opened presentation
-    var autoCollapseDuration: TimeInterval = 3.0
+    var autoCollapseDuration: TimeInterval {
+        AppSettings.autoCollapseDelay
+    }
 
     /// Delay after the mouse leaves an auto-opened panel before collapsing
     var mouseLeaveCollapseDuration: TimeInterval = 0.9
@@ -73,12 +76,28 @@ class NotchActivityCoordinator: ObservableObject {
     /// Whether the pointer is currently hovering the notch panel
     @Published private(set) var isHoveringPanel: Bool = false
 
+    /// Whether the notch is auto-expanded for a task completion notification
+    @Published private(set) var isAutoExpandedForTaskComplete: Bool = false
+
+    /// Timestamp of the last auto-expand for task completion
+    private var autoExpandedAt: Date?
+
+    // MARK: - Idle Hide State
+
+    /// Timer for checking idle state and hiding notch
+    private var idleCheckTask: Task<Void, Never>?
+
+    /// Timestamp of last meaningful activity across all sessions
+    private var lastMeaningfulActivity: Date = Date()
+
     // MARK: - Private
 
     private var activityTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
 
-    private init() {}
+    private init() {
+        startIdleCheckIfNeeded()
+    }
 
     // MARK: - Public API
 
@@ -89,6 +108,7 @@ class NotchActivityCoordinator: ObservableObject {
         duration: TimeInterval = 0
     ) {
         activityDuration = duration
+        lastMeaningfulActivity = Date()
 
         withAnimation(.smooth) {
             expandingActivity = ExpandingActivity(
@@ -109,6 +129,7 @@ class NotchActivityCoordinator: ObservableObject {
     /// Mark the notch as manually opened.
     /// Manual opens should never be auto-collapsed by this coordinator.
     func didOpenManually() {
+        isAutoExpandedForTaskComplete = false
         setPresentationMode(.manualOpen)
     }
 
@@ -118,11 +139,22 @@ class NotchActivityCoordinator: ObservableObject {
         setPresentationMode(.autoOpen)
     }
 
+    /// Auto-expand the notch for a task completion notification.
+    func autoExpandForTaskComplete(sessionId: String) {
+        guard AppSettings.autoExpandOnTaskComplete else { return }
+
+        isAutoExpandedForTaskComplete = true
+        autoExpandedAt = Date()
+        lastMeaningfulActivity = Date()
+        didOpenAutomatically()
+    }
+
     /// Mark the notch as closed.
     func didClose() {
         collapseTask?.cancel()
         collapseTask = nil
         isHoveringPanel = false
+        isAutoExpandedForTaskComplete = false
         setPresentationMode(.closed)
     }
 
@@ -152,6 +184,7 @@ class NotchActivityCoordinator: ObservableObject {
         guard presentationMode == .autoOpen else { return }
         collapseTask?.cancel()
         collapseTask = nil
+        isAutoExpandedForTaskComplete = false
         setPresentationMode(.manualOpen)
     }
 
@@ -161,6 +194,46 @@ class NotchActivityCoordinator: ObservableObject {
             hideActivity()
         } else {
             showActivity(type: type, value: value)
+        }
+    }
+
+    /// Record meaningful activity (prevents idle-hide)
+    func recordActivity() {
+        lastMeaningfulActivity = Date()
+    }
+
+    /// Check if all sessions are idle and enough time has passed for idle-hide
+    func shouldHideForIdle() -> Bool {
+        guard AppSettings.autoHideWhenIdle else { return false }
+        let elapsed = Date().timeIntervalSince(lastMeaningfulActivity)
+        return elapsed >= AppSettings.idleHideDelay
+    }
+
+    /// Cancel all timers (cleanup)
+    func cancelAllTimers() {
+        activityTask?.cancel()
+        activityTask = nil
+        collapseTask?.cancel()
+        collapseTask = nil
+        idleCheckTask?.cancel()
+        idleCheckTask = nil
+    }
+
+    // MARK: - Idle Check
+
+    /// Start periodic idle checking if the setting is enabled
+    func startIdleCheckIfNeeded() {
+        idleCheckTask?.cancel()
+
+        guard AppSettings.autoHideWhenIdle else { return }
+
+        idleCheckTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard let self = self, !Task.isCancelled else { return }
+                // The actual idle-hide logic is driven by NotchView observing this state
+                self.objectWillChange.send()
+            }
         }
     }
 
@@ -218,6 +291,7 @@ class NotchActivityCoordinator: ObservableObject {
         guard presentationMode == .autoOpen else { return }
         presentationMode = .closed
         isHoveringPanel = false
+        isAutoExpandedForTaskComplete = false
         collapseTask = nil
     }
 }
