@@ -67,7 +67,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Mixpanel.mainInstance().track(event: "App Launched")
         Mixpanel.mainInstance().flush()
 
-        HookInstaller.installIfNeeded()
+        // Only install hooks that user has explicitly enabled
+        if AppSettings.hookSetupCompleted {
+            HookInstaller.installEnabledOnly()
+        }
+        // Only start auto-repair if user opted in
+        if AppSettings.autoRepairHooks {
+            HookRepairManager.shared.start()
+        }
+        KeyboardShortcutManager.shared.register()
         NSApplication.shared.setActivationPolicy(.accessory)
 
         windowManager = WindowManager()
@@ -95,6 +103,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Mixpanel.mainInstance().flush()
         updateCheckTimer?.invalidate()
         screenObserver = nil
+        HookRepairManager.shared.stop()
+        KeyboardShortcutManager.shared.unregister()
+        NotchActivityCoordinator.shared.cancelAllTimers()
     }
 
     private func getOrCreateDistinctId() -> String {
