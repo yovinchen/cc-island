@@ -264,19 +264,23 @@ class HookSocketServer {
 
     /// Respond to a pending permission request by toolUseId
     func respondToPermission(toolUseId: String, decision: String, reason: String? = nil,
-                             alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
+                             alwaysAllow: Bool = false, autoApprove: Bool = false,
+                             toolName: String? = nil, source: SessionSource = .claude) {
         queue.async { [weak self] in
             self?.sendPermissionResponse(toolUseId: toolUseId, decision: decision, reason: reason,
-                                         alwaysAllow: alwaysAllow, toolName: toolName, source: source)
+                                         alwaysAllow: alwaysAllow, autoApprove: autoApprove,
+                                         toolName: toolName, source: source)
         }
     }
 
     /// Respond to permission by sessionId (finds the most recent pending for that session)
     func respondToPermissionBySession(sessionId: String, decision: String, reason: String? = nil,
-                                      alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
+                                      alwaysAllow: Bool = false, autoApprove: Bool = false,
+                                      toolName: String? = nil, source: SessionSource = .claude) {
         queue.async { [weak self] in
             self?.sendPermissionResponseBySession(sessionId: sessionId, decision: decision, reason: reason,
-                                                  alwaysAllow: alwaysAllow, toolName: toolName, source: source)
+                                                  alwaysAllow: alwaysAllow, autoApprove: autoApprove,
+                                                  toolName: toolName, source: source)
         }
     }
 
@@ -539,9 +543,9 @@ class HookSocketServer {
     }
 
     /// Build response JSON data based on source type
-    private func buildResponseData(decision: String, reason: String?, alwaysAllow: Bool, toolName: String?, source: SessionSource) -> Data? {
+    private func buildResponseData(decision: String, reason: String?, alwaysAllow: Bool, autoApprove: Bool, toolName: String?, source: SessionSource) -> Data? {
         if source == .claude {
-            return buildClaudeResponse(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName)
+            return buildClaudeResponse(decision: decision, reason: reason, alwaysAllow: alwaysAllow, autoApprove: autoApprove, toolName: toolName)
         } else {
             let response = HookResponse(decision: decision, reason: reason)
             return try? JSONEncoder().encode(response)
@@ -549,30 +553,66 @@ class HookSocketServer {
     }
 
     /// Build hookSpecificOutput format for Claude Code
-    private func buildClaudeResponse(decision: String, reason: String?, alwaysAllow: Bool, toolName: String?) -> Data? {
+    /// See: https://code.claude.com/docs/en/hooks
+    ///
+    /// Correct format:
+    /// {
+    ///   "hookSpecificOutput": {
+    ///     "hookEventName": "PermissionRequest",
+    ///     "decision": {
+    ///       "behavior": "allow" | "deny",
+    ///       "message": "...",              // deny only
+    ///       "updatedPermissions": [        // allow only, INSIDE decision
+    ///         {
+    ///           "type": "addRules" | "setMode",
+    ///           "behavior": "allow",       // for addRules
+    ///           "destination": "session",
+    ///           "rules": [{ "toolName": "Bash" }],  // for addRules
+    ///           "mode": "bypassPermissions"          // for setMode
+    ///         }
+    ///       ]
+    ///     }
+    ///   }
+    /// }
+    private func buildClaudeResponse(decision: String, reason: String?, alwaysAllow: Bool, autoApprove: Bool, toolName: String?) -> Data? {
         var decisionDict: [String: Any] = [
             "behavior": decision == "allow" ? "allow" : "deny"
         ]
+
         if decision == "deny" {
             decisionDict["message"] = reason ?? "Denied by user"
         }
 
-        var hookSpecificOutput: [String: Any] = [
+        if decision == "allow" {
+            if autoApprove {
+                // Auto Approve / Bypass: use setMode to bypass all permission checks
+                decisionDict["updatedPermissions"] = [
+                    [
+                        "type": "setMode",
+                        "mode": "bypassPermissions",
+                        "destination": "session"
+                    ] as [String: Any]
+                ]
+            } else if alwaysAllow, let toolName = toolName {
+                // Allow All: addRules for this specific tool
+                decisionDict["updatedPermissions"] = [
+                    [
+                        "type": "addRules",
+                        "behavior": "allow",
+                        "destination": "session",
+                        "rules": [
+                            ["toolName": toolName]
+                        ]
+                    ] as [String: Any]
+                ]
+            }
+            // Allow Once: no updatedPermissions needed
+        }
+
+        let hookSpecificOutput: [String: Any] = [
             "hookEventName": "PermissionRequest",
             "decision": decisionDict
         ]
-
-        if alwaysAllow && decision == "allow", let toolName = toolName {
-            hookSpecificOutput["updatedPermissions"] = [
-                "addRules": [
-                    [
-                        "toolName": toolName,
-                        "permission": "allow"
-                    ]
-                ],
-                "destination": "session"
-            ]
-        }
 
         let responseDict: [String: Any] = [
             "hookSpecificOutput": hookSpecificOutput
@@ -582,7 +622,8 @@ class HookSocketServer {
     }
 
     private func sendPermissionResponse(toolUseId: String, decision: String, reason: String?,
-                                        alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
+                                        alwaysAllow: Bool = false, autoApprove: Bool = false,
+                                        toolName: String? = nil, source: SessionSource = .claude) {
         permissionsLock.lock()
         guard let pending = pendingPermissions.removeValue(forKey: toolUseId) else {
             permissionsLock.unlock()
@@ -591,13 +632,14 @@ class HookSocketServer {
         }
         permissionsLock.unlock()
 
-        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName, source: source) else {
+        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, autoApprove: autoApprove, toolName: toolName, source: source) else {
             close(pending.clientSocket)
             return
         }
 
+        let suffix = autoApprove ? " (auto-approve)" : (alwaysAllow ? " (always)" : "")
         let age = Date().timeIntervalSince(pending.receivedAt)
-        logger.info("Sending response: \(decision, privacy: .public)\(alwaysAllow ? " (always)" : "", privacy: .public) for \(pending.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
+        logger.info("Sending response: \(decision, privacy: .public)\(suffix, privacy: .public) for \(pending.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
         data.withUnsafeBytes { bytes in
             guard let baseAddress = bytes.baseAddress else {
@@ -616,7 +658,8 @@ class HookSocketServer {
     }
 
     private func sendPermissionResponseBySession(sessionId: String, decision: String, reason: String?,
-                                                  alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
+                                                  alwaysAllow: Bool = false, autoApprove: Bool = false,
+                                                  toolName: String? = nil, source: SessionSource = .claude) {
         permissionsLock.lock()
         let matchingPending = pendingPermissions.values
             .filter { $0.sessionId == sessionId }
@@ -632,14 +675,15 @@ class HookSocketServer {
         pendingPermissions.removeValue(forKey: pending.toolUseId)
         permissionsLock.unlock()
 
-        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName, source: source) else {
+        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, autoApprove: autoApprove, toolName: toolName, source: source) else {
             close(pending.clientSocket)
             permissionFailureHandler?(sessionId, pending.toolUseId)
             return
         }
 
+        let suffix = autoApprove ? " (auto-approve)" : (alwaysAllow ? " (always)" : "")
         let age = Date().timeIntervalSince(pending.receivedAt)
-        logger.info("Sending response: \(decision, privacy: .public)\(alwaysAllow ? " (always)" : "", privacy: .public) for \(sessionId.prefix(8), privacy: .public) tool:\(pending.toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
+        logger.info("Sending response: \(decision, privacy: .public)\(suffix, privacy: .public) for \(sessionId.prefix(8), privacy: .public) tool:\(pending.toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
         var writeSuccess = false
         data.withUnsafeBytes { bytes in
