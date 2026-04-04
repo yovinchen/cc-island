@@ -71,7 +71,7 @@ enum SessionEvent: Sendable {
     case sessionEnded(sessionId: String)
 
     /// Request to load initial history from file
-    case loadHistory(sessionId: String, cwd: String)
+    case loadHistory(sessionId: String, cwd: String, source: SessionSource)
 
     /// History load completed
     case historyLoaded(sessionId: String, messages: [ChatMessage], completedTools: Set<String>, toolResults: [String: ConversationParser.ToolResult], structuredResults: [String: ToolResultData], conversationInfo: ConversationInfo)
@@ -81,6 +81,7 @@ enum SessionEvent: Sendable {
 struct FileUpdatePayload: Sendable {
     let sessionId: String
     let cwd: String
+    let source: SessionSource
     /// Messages to process - either only new messages (if isIncremental) or all messages
     let messages: [ChatMessage]
     /// When true, messages contains only NEW messages since last update
@@ -199,8 +200,8 @@ extension SessionEvent: CustomStringConvertible {
             return "clearDetected(session: \(sessionId.prefix(8)))"
         case .sessionEnded(let sessionId):
             return "sessionEnded(session: \(sessionId.prefix(8)))"
-        case .loadHistory(let sessionId, _):
-            return "loadHistory(session: \(sessionId.prefix(8)))"
+        case .loadHistory(let sessionId, _, let source):
+            return "loadHistory(session: \(sessionId.prefix(8)), source: \(source.rawValue))"
         case .historyLoaded(let sessionId, let messages, _, _, _, _):
             return "historyLoaded(session: \(sessionId.prefix(8)), messages: \(messages.count))"
         case .toolCompleted(let sessionId, let toolUseId, let result):

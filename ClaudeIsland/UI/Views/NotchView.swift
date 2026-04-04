@@ -174,13 +174,21 @@ struct NotchView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.5), value: isBouncing)
                     .contentShape(Rectangle())
                     .onHover { hovering in
+                        activityCoordinator.setPanelHovering(hovering)
                         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) {
                             isHovering = hovering
                         }
                     }
+                    .simultaneousGesture(
+                        TapGesture().onEnded {
+                            if viewModel.status == .opened {
+                                activityCoordinator.promoteAutoOpenToManualIfNeeded()
+                            }
+                        }
+                    )
                     .onTapGesture {
                         if viewModel.status != .opened {
-                            viewModel.notchOpen(reason: .click)
+                            viewModel.notchOpen(reason: .click, presentationMode: .manualOpen)
                         }
                     }
             }
@@ -197,6 +205,13 @@ struct NotchView: View {
         }
         .onChange(of: viewModel.status) { oldStatus, newStatus in
             handleStatusChange(from: oldStatus, to: newStatus)
+        }
+        .onChange(of: activityCoordinator.presentationMode) { _, newMode in
+            if newMode == .closed,
+               viewModel.status == .opened,
+               viewModel.presentationMode == .autoOpen {
+                viewModel.notchClose()
+            }
         }
         .onChange(of: sessionMonitor.pendingInstances) { _, sessions in
             handlePendingSessionsChange(sessions)
@@ -422,7 +437,7 @@ struct NotchView: View {
         if !newPendingIds.isEmpty &&
            viewModel.status == .closed &&
            !TerminalVisibilityDetector.isTerminalVisibleOnCurrentSpace() {
-            viewModel.notchOpen(reason: .notification)
+            viewModel.notchOpen(reason: .notification, presentationMode: .manualOpen)
         }
 
         previousPendingIds = currentIds
@@ -451,15 +466,19 @@ struct NotchView: View {
             // Get the sessions that just entered waitingForInput
             let newlyWaitingSessions = waitingForInputSessions.filter { newWaitingIds.contains($0.stableId) }
 
-            // Play notification sound if the session is not actively focused
-            if let soundName = AppSettings.notificationSound.soundName {
-                // Check if we should play sound (async check for tmux pane focus)
-                Task {
-                    let shouldPlaySound = await shouldPlayNotificationSound(for: newlyWaitingSessions)
-                    if shouldPlaySound {
-                        await MainActor.run {
-                            NSSound(named: soundName)?.play()
-                        }
+            Task {
+                let shouldSurfaceAttention = await shouldSurfaceAttention(for: newlyWaitingSessions)
+
+                await MainActor.run {
+                    if AppSettings.autoExpandOnTaskComplete,
+                       (!AppSettings.suppressAutoExpandWhenFocusedSession || shouldSurfaceAttention),
+                       viewModel.status != .opened {
+                        viewModel.notchOpen(reason: .notification, presentationMode: .autoOpen)
+                    }
+
+                    if let soundName = AppSettings.notificationSound.soundName,
+                       shouldSurfaceAttention {
+                        NSSound(named: soundName)?.play()
                     }
                 }
             }
@@ -483,9 +502,9 @@ struct NotchView: View {
         previousWaitingForInputIds = currentIds
     }
 
-    /// Determine if notification sound should play for the given sessions
-    /// Returns true if ANY session is not actively focused
-    private func shouldPlayNotificationSound(for sessions: [SessionState]) async -> Bool {
+    /// Determine if attention should be surfaced for the given sessions
+    /// Returns true if ANY session is not actively focused.
+    private func shouldSurfaceAttention(for sessions: [SessionState]) async -> Bool {
         for session in sessions {
             guard let pid = session.pid else {
                 // No PID means we can't check focus, assume not focused

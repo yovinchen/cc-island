@@ -89,10 +89,12 @@ def main():
     # Build state object
     state = {
         "session_id": session_id,
+        "source": "claude",
         "cwd": cwd,
         "event": event,
         "pid": claude_pid,
         "tty": tty,
+        "approval_channel": "none",
     }
 
     # Map events to status
@@ -121,6 +123,7 @@ def main():
     elif event == "PermissionRequest":
         # This is where we can control the permission
         state["status"] = "waiting_for_approval"
+        state["approval_channel"] = "socket"
         state["tool"] = data.get("tool_name")
         state["tool_input"] = tool_input
         # tool_use_id lookup handled by Swift-side cache from PreToolUse

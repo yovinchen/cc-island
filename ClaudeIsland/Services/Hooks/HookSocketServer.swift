@@ -12,14 +12,16 @@ import os.log
 /// Logger for hook socket server
 private let logger = Logger(subsystem: "com.claudeisland", category: "Hooks")
 
-/// Event received from Claude Code hooks
-struct HookEvent: Codable, Sendable {
+/// Event received from supported AI coding tool hooks
+struct HookEvent: Decodable, Sendable {
     let sessionId: String
+    let source: SessionSource
     let cwd: String
     let event: String
     let status: String
     let pid: Int?
     let tty: String?
+    let approvalChannel: ApprovalChannel
     let tool: String?
     let toolInput: [String: AnyCodable]?
     let toolUseId: String?
@@ -28,21 +30,51 @@ struct HookEvent: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
+        case source
+        case legacySource = "_source"
         case cwd, event, status, pid, tty, tool
+        case approvalChannel = "approval_channel"
+        case approvalChannelCamel = "approvalChannel"
         case toolInput = "tool_input"
         case toolUseId = "tool_use_id"
         case notificationType = "notification_type"
         case message
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        sessionId = try container.decode(String.self, forKey: .sessionId)
+        let rawSource = try container.decodeIfPresent(String.self, forKey: .source) ??
+            (try container.decodeIfPresent(String.self, forKey: .legacySource))
+        source = SessionSource(rawSource: rawSource)
+        cwd = try container.decode(String.self, forKey: .cwd)
+        event = try container.decode(String.self, forKey: .event)
+        status = try container.decode(String.self, forKey: .status)
+        pid = try container.decodeIfPresent(Int.self, forKey: .pid)
+        tty = try container.decodeIfPresent(String.self, forKey: .tty)
+
+        let rawApprovalChannel = try container.decodeIfPresent(String.self, forKey: .approvalChannel) ??
+            (try container.decodeIfPresent(String.self, forKey: .approvalChannelCamel))
+        approvalChannel = ApprovalChannel(rawChannel: rawApprovalChannel, defaultSource: source)
+
+        tool = try container.decodeIfPresent(String.self, forKey: .tool)
+        toolInput = try container.decodeIfPresent([String: AnyCodable].self, forKey: .toolInput)
+        toolUseId = try container.decodeIfPresent(String.self, forKey: .toolUseId)
+        notificationType = try container.decodeIfPresent(String.self, forKey: .notificationType)
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+    }
+
     /// Create a copy with updated toolUseId
-    init(sessionId: String, cwd: String, event: String, status: String, pid: Int?, tty: String?, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
+    init(sessionId: String, source: SessionSource, cwd: String, event: String, status: String, pid: Int?, tty: String?, approvalChannel: ApprovalChannel, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?) {
         self.sessionId = sessionId
+        self.source = source
         self.cwd = cwd
         self.event = event
         self.status = status
         self.pid = pid
         self.tty = tty
+        self.approvalChannel = approvalChannel
         self.tool = tool
         self.toolInput = toolInput
         self.toolUseId = toolUseId
@@ -79,6 +111,15 @@ struct HookEvent: Codable, Sendable {
     /// Whether this event expects a response (permission request)
     nonisolated var expectsResponse: Bool {
         event == "PermissionRequest" && status == "waiting_for_approval"
+    }
+
+    /// Resolved approval channel for the event.
+    /// Claude permission requests still default to socket when the payload omitted a channel.
+    var resolvedApprovalChannel: ApprovalChannel {
+        if expectsResponse && approvalChannel == .none && source == .claude {
+            return .socket
+        }
+        return approvalChannel
     }
 }
 
@@ -438,11 +479,13 @@ class HookSocketServer {
 
             let updatedEvent = HookEvent(
                 sessionId: event.sessionId,
+                source: event.source,
                 cwd: event.cwd,
                 event: event.event,
                 status: event.status,
                 pid: event.pid,
                 tty: event.tty,
+                approvalChannel: event.resolvedApprovalChannel,
                 tool: event.tool,
                 toolInput: event.toolInput,
                 toolUseId: toolUseId,  // Use resolved toolUseId

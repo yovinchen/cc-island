@@ -38,21 +38,25 @@ class ChatHistoryManager: ObservableObject {
     func loadFromFile(sessionId: String, cwd: String) async {
         guard !loadedSessions.contains(sessionId) else { return }
         loadedSessions.insert(sessionId)
-        await SessionStore.shared.process(.loadHistory(sessionId: sessionId, cwd: cwd))
+        let source = await SessionStore.shared.session(for: sessionId)?.source ?? .claude
+        await SessionStore.shared.process(.loadHistory(sessionId: sessionId, cwd: cwd, source: source))
     }
 
     func syncFromFile(sessionId: String, cwd: String) async {
+        let source = await SessionStore.shared.session(for: sessionId)?.source ?? .claude
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
-            cwd: cwd
+            cwd: cwd,
+            source: source
         )
-        let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId)
-        let toolResults = await ConversationParser.shared.toolResults(for: sessionId)
-        let structuredResults = await ConversationParser.shared.structuredResults(for: sessionId)
+        let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId, cwd: cwd, source: source)
+        let toolResults = await ConversationParser.shared.toolResults(for: sessionId, cwd: cwd, source: source)
+        let structuredResults = await ConversationParser.shared.structuredResults(for: sessionId, cwd: cwd, source: source)
 
         let payload = FileUpdatePayload(
             sessionId: sessionId,
             cwd: cwd,
+            source: source,
             messages: messages,
             isIncremental: false,  // Full sync
             completedToolIds: completedTools,

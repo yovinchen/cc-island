@@ -41,7 +41,8 @@ class ClaudeSessionMonitor: ObservableObject {
                     Task { @MainActor in
                         InterruptWatcherManager.shared.startWatching(
                             sessionId: event.sessionId,
-                            cwd: event.cwd
+                            cwd: event.cwd,
+                            source: event.source
                         )
                     }
                 }
@@ -132,7 +133,8 @@ class ClaudeSessionMonitor: ObservableObject {
     /// Request history load for a session
     func loadHistory(sessionId: String, cwd: String) {
         Task {
-            await SessionStore.shared.process(.loadHistory(sessionId: sessionId, cwd: cwd))
+            let source = await SessionStore.shared.session(for: sessionId)?.source ?? .claude
+            await SessionStore.shared.process(.loadHistory(sessionId: sessionId, cwd: cwd, source: source))
         }
     }
 }

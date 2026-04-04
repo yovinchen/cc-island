@@ -8,12 +8,150 @@
 
 import Foundation
 
+enum SessionSource: String, Codable, CaseIterable, Sendable {
+    case claude
+    case codexCLI = "codex_cli"
+    case codexDesktop = "codex_desktop"
+    case cursor
+    case opencode
+    case gemini
+    case copilot
+    case codebuddy
+    case unknown
+
+    init(rawSource: String?) {
+        guard let rawSource else {
+            self = .claude
+            return
+        }
+
+        switch rawSource.lowercased() {
+        case "claude":
+            self = .claude
+        case "codex", "codex_cli":
+            self = .codexCLI
+        case "codex_desktop":
+            self = .codexDesktop
+        case "cursor":
+            self = .cursor
+        case "opencode":
+            self = .opencode
+        case "gemini":
+            self = .gemini
+        case "copilot":
+            self = .copilot
+        case "codebuddy":
+            self = .codebuddy
+        default:
+            self = .unknown
+        }
+    }
+
+    /// Human-readable label for future UI surfaces.
+    var displayName: String {
+        switch self {
+        case .claude: return "Claude"
+        case .codexCLI: return "Codex CLI"
+        case .codexDesktop: return "Codex Desktop"
+        case .cursor: return "Cursor"
+        case .opencode: return "OpenCode"
+        case .gemini: return "Gemini"
+        case .copilot: return "Copilot"
+        case .codebuddy: return "CodeBuddy"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    /// Root config folder used by the local transcript helpers.
+    /// Unknown sources intentionally fall back to Claude's layout until a dedicated adapter exists.
+    var transcriptRootFolderName: String {
+        switch self {
+        case .codexCLI, .codexDesktop:
+            return ".codex"
+        default:
+            return ".claude"
+        }
+    }
+
+    /// Shared cwd -> project directory transformation used by Claude transcript paths.
+    static func projectDirectoryName(for cwd: String) -> String {
+        cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+    }
+
+    /// Transcript file candidates for this source.
+    func transcriptFileCandidates(sessionId: String, cwd: String) -> [String] {
+        switch self {
+        case .codexCLI, .codexDesktop:
+            return [
+                "\(NSHomeDirectory())/.codex/sessions/\(sessionId).jsonl",
+                "\(NSHomeDirectory())/.codex/archived_sessions/\(sessionId).jsonl"
+            ]
+        default:
+            let projectDir = Self.projectDirectoryName(for: cwd)
+            return [
+                "\(NSHomeDirectory())/.claude/projects/\(projectDir)/\(sessionId).jsonl"
+            ]
+        }
+    }
+
+    /// Agent transcript file candidates for nested Task sessions.
+    func agentFileCandidates(agentId: String, cwd: String) -> [String] {
+        switch self {
+        case .codexCLI, .codexDesktop:
+            return [
+                "\(NSHomeDirectory())/.codex/sessions/agent-\(agentId).jsonl",
+                "\(NSHomeDirectory())/.codex/archived_sessions/agent-\(agentId).jsonl"
+            ]
+        default:
+            let projectDir = Self.projectDirectoryName(for: cwd)
+            return [
+                "\(NSHomeDirectory())/.claude/projects/\(projectDir)/agent-\(agentId).jsonl"
+            ]
+        }
+    }
+}
+
+enum ApprovalChannel: String, Codable, Sendable {
+    case socket
+    case http
+    case terminal
+    case none
+    case unknown
+
+    init(rawChannel: String?, defaultSource: SessionSource) {
+        _ = defaultSource
+        guard let rawChannel else {
+            self = .none
+            return
+        }
+
+        switch rawChannel.lowercased() {
+        case "socket":
+            self = .socket
+        case "http":
+            self = .http
+        case "terminal":
+            self = .terminal
+        case "none":
+            self = .none
+        default:
+            self = .unknown
+        }
+    }
+
+    /// Fallback channel for permission requests when a payload omitted one.
+    var resolvedForPermissionRequest: ApprovalChannel {
+        (self == .none || self == .unknown) ? .socket : self
+    }
+}
+
 /// Complete state for a single Claude session
 /// This is the single source of truth - all state reads and writes go through SessionStore
 struct SessionState: Equatable, Identifiable, Sendable {
     // MARK: - Identity
 
     let sessionId: String
+    var source: SessionSource
     let cwd: String
     let projectName: String
 
@@ -22,6 +160,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
     var pid: Int?
     var tty: String?
     var isInTmux: Bool
+    var approvalChannel: ApprovalChannel
 
     // MARK: - State Machine
 
@@ -60,17 +199,25 @@ struct SessionState: Equatable, Identifiable, Sendable {
 
     // MARK: - Identifiable
 
-    var id: String { sessionId }
+    nonisolated static func key(sessionId: String, source: SessionSource) -> String {
+        "\(source.rawValue):\(sessionId)"
+    }
+
+    var sessionKey: String { Self.key(sessionId: sessionId, source: source) }
+
+    var id: String { sessionKey }
 
     // MARK: - Initialization
 
     nonisolated init(
         sessionId: String,
+        source: SessionSource = .claude,
         cwd: String,
         projectName: String? = nil,
         pid: Int? = nil,
         tty: String? = nil,
         isInTmux: Bool = false,
+        approvalChannel: ApprovalChannel = .none,
         phase: SessionPhase = .idle,
         chatItems: [ChatHistoryItem] = [],
         toolTracker: ToolTracker = ToolTracker(),
@@ -84,11 +231,13 @@ struct SessionState: Equatable, Identifiable, Sendable {
         createdAt: Date = Date()
     ) {
         self.sessionId = sessionId
+        self.source = source
         self.cwd = cwd
         self.projectName = projectName ?? URL(fileURLWithPath: cwd).lastPathComponent
         self.pid = pid
         self.tty = tty
         self.isInTmux = isInTmux
+        self.approvalChannel = approvalChannel
         self.phase = phase
         self.chatItems = chatItems
         self.toolTracker = toolTracker
@@ -119,9 +268,9 @@ struct SessionState: Equatable, Identifiable, Sendable {
     /// Stable identity for SwiftUI (combines PID and sessionId for animation stability)
     var stableId: String {
         if let pid = pid {
-            return "\(pid)-\(sessionId)"
+            return "\(source.rawValue):\(pid)-\(sessionId)"
         }
-        return sessionId
+        return id
     }
 
     /// Display title: summary > first user message > project name

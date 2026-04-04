@@ -25,6 +25,7 @@ class AgentFileWatcher {
     private let sessionId: String
     private let taskToolId: String
     private let agentId: String
+    private let sessionSource: SessionSource
     private let cwd: String
     private let filePath: String
     private let queue = DispatchQueue(label: "com.claudeisland.agentfilewatcher", qos: .userInitiated)
@@ -34,15 +35,13 @@ class AgentFileWatcher {
 
     weak var delegate: AgentFileWatcherDelegate?
 
-    init(sessionId: String, taskToolId: String, agentId: String, cwd: String) {
+    init(sessionId: String, taskToolId: String, agentId: String, cwd: String, source: SessionSource = .claude) {
         self.sessionId = sessionId
         self.taskToolId = taskToolId
         self.agentId = agentId
+        self.sessionSource = source
         self.cwd = cwd
-
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-")
-                            .replacingOccurrences(of: ".", with: "-")
-        self.filePath = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+        self.filePath = ConversationParser.agentFilePath(agentId: agentId, cwd: cwd, source: source) ?? ""
     }
 
     /// Start watching the agent file
@@ -95,7 +94,7 @@ class AgentFileWatcher {
     }
 
     private func parseTools() {
-        let tools = ConversationParser.parseSubagentToolsSync(agentId: agentId, cwd: cwd)
+        let tools = ConversationParser.parseSubagentToolsSync(agentId: agentId, cwd: cwd, source: sessionSource)
 
         let newTools = tools.filter { !seenToolIds.contains($0.id) }
         guard !newTools.isEmpty || tools.count != seenToolIds.count else { return }
@@ -147,15 +146,20 @@ class AgentFileWatcherManager {
 
     private init() {}
 
-    func startWatching(sessionId: String, taskToolId: String, agentId: String, cwd: String) {
-        let key = "\(sessionId)-\(taskToolId)"
+    private func watcherKey(sessionId: String, taskToolId: String, source: SessionSource) -> String {
+        "\(source.rawValue)|\(sessionId)|\(taskToolId)"
+    }
+
+    func startWatching(sessionId: String, taskToolId: String, agentId: String, cwd: String, source: SessionSource = .claude) {
+        let key = watcherKey(sessionId: sessionId, taskToolId: taskToolId, source: source)
         guard watchers[key] == nil else { return }
 
         let watcher = AgentFileWatcher(
             sessionId: sessionId,
             taskToolId: taskToolId,
             agentId: agentId,
-            cwd: cwd
+            cwd: cwd,
+            source: source
         )
         watcher.delegate = delegate
         watcher.start()
@@ -166,14 +170,16 @@ class AgentFileWatcherManager {
 
     /// Stop watching a specific Task's agent file
     func stopWatching(sessionId: String, taskToolId: String) {
-        let key = "\(sessionId)-\(taskToolId)"
-        watchers[key]?.stop()
-        watchers.removeValue(forKey: key)
+        let matchingKeys = watchers.keys.filter { $0.contains("|\(sessionId)|\(taskToolId)") }
+        for key in matchingKeys {
+            watchers[key]?.stop()
+            watchers.removeValue(forKey: key)
+        }
     }
 
     /// Stop all watchers for a session
     func stopWatchingSession(sessionId: String) {
-        let keysToRemove = watchers.keys.filter { $0.hasPrefix(sessionId) }
+        let keysToRemove = watchers.keys.filter { $0.contains("|\(sessionId)|") }
         for key in keysToRemove {
             watchers[key]?.stop()
             watchers.removeValue(forKey: key)
@@ -190,8 +196,7 @@ class AgentFileWatcherManager {
 
     /// Check if we're watching a Task's agent file
     func isWatching(sessionId: String, taskToolId: String) -> Bool {
-        let key = "\(sessionId)-\(taskToolId)"
-        return watchers[key] != nil
+        watchers.keys.contains { $0.contains("|\(sessionId)|\(taskToolId)") }
     }
 }
 

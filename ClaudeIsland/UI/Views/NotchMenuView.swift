@@ -20,6 +20,8 @@ struct NotchMenuView: View {
     @ObservedObject private var soundSelector = SoundSelector.shared
     @State private var hooksInstalled: Bool = false
     @State private var launchAtLogin: Bool = false
+    @State private var autoExpandOnTaskComplete: Bool = AppSettings.autoExpandOnTaskComplete
+    @State private var suppressAutoExpandWhenFocusedSession: Bool = AppSettings.suppressAutoExpandWhenFocusedSession
 
     var body: some View {
         VStack(spacing: 4) {
@@ -38,6 +40,29 @@ struct NotchMenuView: View {
             // Appearance settings
             ScreenPickerRow(screenSelector: screenSelector)
             SoundPickerRow(soundSelector: soundSelector)
+
+            Divider()
+                .background(Color.white.opacity(0.08))
+                .padding(.vertical, 4)
+
+            // Behavior settings
+            MenuToggleRow(
+                icon: "arrow.down.to.line.compact",
+                label: "Auto-expand on Task complete",
+                isOn: autoExpandOnTaskComplete
+            ) {
+                autoExpandOnTaskComplete.toggle()
+                AppSettings.autoExpandOnTaskComplete = autoExpandOnTaskComplete
+            }
+
+            MenuToggleRow(
+                icon: "scope",
+                label: "Suppress when focused",
+                isOn: suppressAutoExpandWhenFocusedSession
+            ) {
+                suppressAutoExpandWhenFocusedSession.toggle()
+                AppSettings.suppressAutoExpandWhenFocusedSession = suppressAutoExpandWhenFocusedSession
+            }
 
             Divider()
                 .background(Color.white.opacity(0.08))
@@ -122,6 +147,8 @@ struct NotchMenuView: View {
     private func refreshStates() {
         hooksInstalled = HookInstaller.isInstalled()
         launchAtLogin = SMAppService.mainApp.status == .enabled
+        autoExpandOnTaskComplete = AppSettings.autoExpandOnTaskComplete
+        suppressAutoExpandWhenFocusedSession = AppSettings.suppressAutoExpandWhenFocusedSession
         screenSelector.refreshScreens()
     }
 }

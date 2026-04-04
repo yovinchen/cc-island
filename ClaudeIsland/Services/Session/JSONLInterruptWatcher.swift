@@ -23,6 +23,7 @@ class JSONLInterruptWatcher {
     private var source: DispatchSourceFileSystemObject?
     private var lastOffset: UInt64 = 0
     private let sessionId: String
+    private let sessionSource: SessionSource
     private let filePath: String
     private let queue = DispatchQueue(label: "com.claudeisland.interruptwatcher", qos: .userInteractive)
 
@@ -37,11 +38,10 @@ class JSONLInterruptWatcher {
         "[Request interrupted by user"
     ]
 
-    init(sessionId: String, cwd: String) {
+    init(sessionId: String, cwd: String, source: SessionSource = .claude) {
         self.sessionId = sessionId
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-")
-                            .replacingOccurrences(of: ".", with: "-")
-        self.filePath = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+        self.sessionSource = source
+        self.filePath = ConversationParser.sessionFilePath(sessionId: sessionId, cwd: cwd, source: source) ?? ""
     }
 
     /// Start watching the JSONL file for interrupts
@@ -185,19 +185,27 @@ class InterruptWatcherManager {
 
     private init() {}
 
-    func startWatching(sessionId: String, cwd: String) {
-        guard watchers[sessionId] == nil else { return }
+    private func watcherKey(sessionId: String, source: SessionSource) -> String {
+        "\(source.rawValue)|\(sessionId)"
+    }
 
-        let watcher = JSONLInterruptWatcher(sessionId: sessionId, cwd: cwd)
+    func startWatching(sessionId: String, cwd: String, source: SessionSource = .claude) {
+        let key = watcherKey(sessionId: sessionId, source: source)
+        guard watchers[key] == nil else { return }
+
+        let watcher = JSONLInterruptWatcher(sessionId: sessionId, cwd: cwd, source: source)
         watcher.delegate = delegate
         watcher.start()
-        watchers[sessionId] = watcher
+        watchers[key] = watcher
     }
 
     /// Stop watching a specific session
     func stopWatching(sessionId: String) {
-        watchers[sessionId]?.stop()
-        watchers.removeValue(forKey: sessionId)
+        let matchingKeys = watchers.keys.filter { $0.hasSuffix("|\(sessionId)") }
+        for key in matchingKeys {
+            watchers[key]?.stop()
+            watchers.removeValue(forKey: key)
+        }
     }
 
     /// Stop all watchers
@@ -210,6 +218,6 @@ class InterruptWatcherManager {
 
     /// Check if we're watching a session
     func isWatching(sessionId: String) -> Bool {
-        watchers[sessionId] != nil
+        watchers.keys.contains { $0.hasSuffix("|\(sessionId)") }
     }
 }

@@ -45,6 +45,7 @@ class NotchViewModel: ObservableObject {
     @Published var openReason: NotchOpenReason = .unknown
     @Published var contentType: NotchContentType = .instances
     @Published var isHovering: Bool = false
+    @Published private(set) var presentationMode: NotchPresentationMode = .closed
 
     // MARK: - Dependencies
 
@@ -165,7 +166,7 @@ class NotchViewModel: ObservableObject {
         if isHovering && (status == .closed || status == .popping) {
             let workItem = DispatchWorkItem { [weak self] in
                 guard let self = self, self.isHovering else { return }
-                self.notchOpen(reason: .hover)
+                self.notchOpen(reason: .hover, presentationMode: .autoOpen)
             }
             hoverTimer = workItem
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
@@ -189,7 +190,7 @@ class NotchViewModel: ObservableObject {
             }
         case .closed, .popping:
             if geometry.isPointInNotch(location) {
-                notchOpen(reason: .click)
+                notchOpen(reason: .click, presentationMode: .manualOpen)
             }
         }
     }
@@ -228,8 +229,22 @@ class NotchViewModel: ObservableObject {
     // MARK: - Actions
 
     func notchOpen(reason: NotchOpenReason = .unknown) {
+        notchOpen(reason: reason, presentationMode: .manualOpen)
+    }
+
+    func notchOpen(reason: NotchOpenReason = .unknown, presentationMode: NotchPresentationMode) {
         openReason = reason
+        self.presentationMode = presentationMode
         status = .opened
+
+        switch presentationMode {
+        case .manualOpen:
+            NotchActivityCoordinator.shared.didOpenManually()
+        case .autoOpen:
+            NotchActivityCoordinator.shared.didOpenAutomatically()
+        case .closed:
+            NotchActivityCoordinator.shared.didClose()
+        }
 
         // Don't restore chat on notification - show instances list instead
         if reason == .notification {
@@ -253,7 +268,9 @@ class NotchViewModel: ObservableObject {
             currentChatSession = session
         }
         status = .closed
+        presentationMode = .closed
         contentType = .instances
+        NotchActivityCoordinator.shared.didClose()
     }
 
     func notchPop() {
@@ -286,7 +303,7 @@ class NotchViewModel: ObservableObject {
 
     /// Perform boot animation: expand briefly then collapse
     func performBootAnimation() {
-        notchOpen(reason: .boot)
+        notchOpen(reason: .boot, presentationMode: .manualOpen)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self = self, self.openReason == .boot else { return }
             self.notchClose()

@@ -69,11 +69,12 @@ actor ConversationParser {
         }
     }
 
-    /// Parse a JSONL file to extract conversation info
-    /// Uses caching based on file modification time
-    func parse(sessionId: String, cwd: String) -> ConversationInfo {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let sessionFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+    /// Parse a transcript file to extract conversation info.
+    /// Uses caching based on file modification time.
+    func parse(sessionId: String, cwd: String, source: SessionSource = .claude) -> ConversationInfo {
+        guard let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, source: source) else {
+            return ConversationInfo(summary: nil, lastMessage: nil, lastMessageRole: nil, lastToolName: nil, firstUserMessage: nil, lastUserMessageDate: nil)
+        }
 
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: sessionFile),
@@ -262,16 +263,19 @@ actor ConversationParser {
     // MARK: - Full Conversation Parsing
 
     /// Parse full conversation history for chat view (returns ALL messages - use sparingly)
-    func parseFullConversation(sessionId: String, cwd: String) -> [ChatMessage] {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+    func parseFullConversation(sessionId: String, cwd: String, source: SessionSource = .claude) -> [ChatMessage] {
+        guard let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, source: source) else {
+            return []
+        }
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return []
         }
 
-        var state = incrementalState[sessionId] ?? IncrementalParseState()
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        var state = incrementalState[stateKey] ?? IncrementalParseState()
         _ = parseNewLines(filePath: sessionFile, state: &state)
-        incrementalState[sessionId] = state
+        incrementalState[stateKey] = state
 
         return state.messages
     }
@@ -287,8 +291,17 @@ actor ConversationParser {
     }
 
     /// Parse only NEW messages since last call (efficient incremental updates)
-    func parseIncremental(sessionId: String, cwd: String) -> IncrementalParseResult {
-        let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd)
+    func parseIncremental(sessionId: String, cwd: String, source: SessionSource = .claude) -> IncrementalParseResult {
+        guard let sessionFile = Self.sessionFilePath(sessionId: sessionId, cwd: cwd, source: source) else {
+            return IncrementalParseResult(
+                newMessages: [],
+                allMessages: [],
+                completedToolIds: [],
+                toolResults: [:],
+                structuredResults: [:],
+                clearDetected: false
+            )
+        }
 
         guard FileManager.default.fileExists(atPath: sessionFile) else {
             return IncrementalParseResult(
@@ -301,13 +314,14 @@ actor ConversationParser {
             )
         }
 
-        var state = incrementalState[sessionId] ?? IncrementalParseState()
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        var state = incrementalState[stateKey] ?? IncrementalParseState()
         let newMessages = parseNewLines(filePath: sessionFile, state: &state)
         let clearDetected = state.clearPending
         if clearDetected {
             state.clearPending = false
         }
-        incrementalState[sessionId] = state
+        incrementalState[stateKey] = state
 
         return IncrementalParseResult(
             newMessages: newMessages,
@@ -427,40 +441,96 @@ actor ConversationParser {
     }
 
     /// Get set of completed tool IDs for a session
-    func completedToolIds(for sessionId: String) -> Set<String> {
-        return incrementalState[sessionId]?.completedToolIds ?? []
+    func completedToolIds(for sessionId: String, cwd: String, source: SessionSource = .claude) -> Set<String> {
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        return incrementalState[stateKey]?.completedToolIds ?? []
     }
 
     /// Get tool results for a session
-    func toolResults(for sessionId: String) -> [String: ToolResult] {
-        return incrementalState[sessionId]?.toolResults ?? [:]
+    func toolResults(for sessionId: String, cwd: String, source: SessionSource = .claude) -> [String: ToolResult] {
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        return incrementalState[stateKey]?.toolResults ?? [:]
     }
 
     /// Get structured tool results for a session
-    func structuredResults(for sessionId: String) -> [String: ToolResultData] {
-        return incrementalState[sessionId]?.structuredResults ?? [:]
+    func structuredResults(for sessionId: String, cwd: String, source: SessionSource = .claude) -> [String: ToolResultData] {
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        return incrementalState[stateKey]?.structuredResults ?? [:]
     }
 
     /// Reset incremental state for a session (call when reloading)
-    func resetState(for sessionId: String) {
-        incrementalState.removeValue(forKey: sessionId)
+    func resetState(for sessionId: String, cwd: String, source: SessionSource = .claude) {
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        incrementalState.removeValue(forKey: stateKey)
     }
 
     /// Check if a /clear command was detected during the last parse
     /// Returns true once and consumes the pending flag
-    func checkAndConsumeClearDetected(for sessionId: String) -> Bool {
-        guard var state = incrementalState[sessionId], state.clearPending else {
+    func checkAndConsumeClearDetected(for sessionId: String, cwd: String, source: SessionSource = .claude) -> Bool {
+        let stateKey = Self.incrementalStateKey(sessionId: sessionId, cwd: cwd, source: source)
+        guard var state = incrementalState[stateKey], state.clearPending else {
             return false
         }
         state.clearPending = false
-        incrementalState[sessionId] = state
+        incrementalState[stateKey] = state
         return true
     }
 
-    /// Build session file path
-    private static func sessionFilePath(sessionId: String, cwd: String) -> String {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        return NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+    nonisolated static func incrementalStateKey(sessionId: String, cwd: String, source: SessionSource) -> String {
+        "\(source.rawValue):\(cwd):\(sessionId)"
+    }
+
+    nonisolated static func sessionFilePath(sessionId: String, cwd: String, source: SessionSource = .claude) -> String? {
+        switch source {
+        case .claude:
+            let projectDir = claudeProjectDirectoryName(for: cwd)
+            return NSHomeDirectory() + "/.claude/projects/" + projectDir + "/" + sessionId + ".jsonl"
+        case .codexCLI, .codexDesktop:
+            return codexSessionFilePath(sessionId: sessionId)
+        default:
+            return nil
+        }
+    }
+
+    nonisolated static func agentFilePath(agentId: String, cwd: String, source: SessionSource = .claude) -> String? {
+        guard source == .claude else { return nil }
+        let projectDir = claudeProjectDirectoryName(for: cwd)
+        return NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+    }
+
+    private static func claudeProjectDirectoryName(for cwd: String) -> String {
+        cwd.replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ".", with: "-")
+    }
+
+    private static func codexSessionFilePath(sessionId: String) -> String? {
+        if sessionId.hasSuffix(".jsonl"), FileManager.default.fileExists(atPath: sessionId) {
+            return sessionId
+        }
+
+        let fileManager = FileManager.default
+        let searchRoots = [
+            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex/sessions"),
+            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex/archived_sessions")
+        ]
+
+        for root in searchRoots where fileManager.fileExists(atPath: root.path) {
+            guard let enumerator = fileManager.enumerator(
+                at: root,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                continue
+            }
+
+            for case let fileURL as URL in enumerator where fileURL.pathExtension == "jsonl" {
+                if fileURL.lastPathComponent.contains(sessionId) {
+                    return fileURL.path
+                }
+            }
+        }
+
+        return nil
     }
 
     private func parseMessageLine(_ json: [String: Any], seenToolIds: inout Set<String>, toolIdToName: inout [String: String]) -> ChatMessage? {
@@ -883,12 +953,12 @@ actor ConversationParser {
 
     // MARK: - Subagent Tools Parsing
 
-    /// Parse subagent tools from an agent JSONL file
-    func parseSubagentTools(agentId: String, cwd: String) -> [SubagentToolInfo] {
+    /// Parse subagent tools from an agent transcript file.
+    func parseSubagentTools(agentId: String, cwd: String, source: SessionSource = .claude) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
-
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let agentFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+        guard let agentFile = Self.agentFilePath(agentId: agentId, cwd: cwd, source: source) else {
+            return []
+        }
 
         guard FileManager.default.fileExists(atPath: agentFile),
               let content = try? String(contentsOfFile: agentFile, encoding: .utf8) else {
@@ -976,11 +1046,11 @@ struct SubagentToolInfo: Sendable {
 
 extension ConversationParser {
     /// Parse subagent tools from an agent JSONL file (static, synchronous version)
-    nonisolated static func parseSubagentToolsSync(agentId: String, cwd: String) -> [SubagentToolInfo] {
+    nonisolated static func parseSubagentToolsSync(agentId: String, cwd: String, source: SessionSource = .claude) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
-
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let agentFile = NSHomeDirectory() + "/.claude/projects/" + projectDir + "/agent-" + agentId + ".jsonl"
+        guard let agentFile = Self.agentFilePath(agentId: agentId, cwd: cwd, source: source) else {
+            return []
+        }
 
         guard FileManager.default.fileExists(atPath: agentFile),
               let content = try? String(contentsOfFile: agentFile, encoding: .utf8) else {
@@ -1054,4 +1124,3 @@ extension ConversationParser {
         return tools
     }
 }
-

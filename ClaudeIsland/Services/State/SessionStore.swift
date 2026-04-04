@@ -75,8 +75,8 @@ actor SessionStore {
         case .sessionEnded(let sessionId):
             await processSessionEnd(sessionId: sessionId)
 
-        case .loadHistory(let sessionId, let cwd):
-            await loadHistoryFromFile(sessionId: sessionId, cwd: cwd)
+        case .loadHistory(let sessionId, let cwd, let source):
+            await loadHistoryFromFile(sessionId: sessionId, cwd: cwd, source: source)
 
         case .historyLoaded(let sessionId, let messages, let completedTools, let toolResults, let structuredResults, let conversationInfo):
             await processHistoryLoaded(
@@ -133,6 +133,8 @@ actor SessionStore {
         if let tty = event.tty {
             session.tty = tty.replacingOccurrences(of: "/dev/", with: "")
         }
+        session.source = event.source
+        session.approvalChannel = event.resolvedApprovalChannel
         session.lastActivity = Date()
 
         if event.status == "ended" {
@@ -172,11 +174,13 @@ actor SessionStore {
     private func createSession(from event: HookEvent) -> SessionState {
         SessionState(
             sessionId: event.sessionId,
+            source: event.source,
             cwd: event.cwd,
             projectName: URL(fileURLWithPath: event.cwd).lastPathComponent,
             pid: event.pid,
             tty: event.tty?.replacingOccurrences(of: "/dev/", with: ""),
             isInTmux: false,  // Will be updated
+            approvalChannel: event.resolvedApprovalChannel,
             phase: .idle
         )
     }
@@ -492,11 +496,15 @@ actor SessionStore {
         guard var session = sessions[payload.sessionId] else { return }
 
         // Update conversationInfo from JSONL (summary, lastMessage, etc.)
+        let source = payload.source
+
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: payload.sessionId,
-            cwd: session.cwd
+            cwd: session.cwd,
+            source: source
         )
         session.conversationInfo = conversationInfo
+        session.source = source
 
         // Handle /clear reconciliation - remove items that no longer exist in parser state
         if session.needsClearReconciliation {
@@ -621,7 +629,8 @@ actor SessionStore {
         await populateSubagentToolsFromAgentFiles(
             session: &session,
             cwd: payload.cwd,
-            structuredResults: payload.structuredResults
+            structuredResults: payload.structuredResults,
+            source: source
         )
 
         sessions[payload.sessionId] = session
@@ -639,7 +648,8 @@ actor SessionStore {
     private func populateSubagentToolsFromAgentFiles(
         session: inout SessionState,
         cwd: String,
-        structuredResults: [String: ToolResultData]
+        structuredResults: [String: ToolResultData],
+        source: SessionSource
     ) async {
         for i in 0..<session.chatItems.count {
             guard case .toolCall(var tool) = session.chatItems[i].type,
@@ -659,7 +669,8 @@ actor SessionStore {
 
             let subagentToolInfos = await ConversationParser.shared.parseSubagentTools(
                 agentId: taskResult.agentId,
-                cwd: cwd
+                cwd: cwd,
+                source: source
             )
 
             guard !subagentToolInfos.isEmpty else { continue }
@@ -848,20 +859,24 @@ actor SessionStore {
 
     // MARK: - History Loading
 
-    private func loadHistoryFromFile(sessionId: String, cwd: String) async {
+    private func loadHistoryFromFile(sessionId: String, cwd: String, source: SessionSource) async {
+        let sessionSource = sessions[sessionId]?.source ?? source
+
         // Parse file asynchronously
         let messages = await ConversationParser.shared.parseFullConversation(
             sessionId: sessionId,
-            cwd: cwd
+            cwd: cwd,
+            source: sessionSource
         )
-        let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId)
-        let toolResults = await ConversationParser.shared.toolResults(for: sessionId)
-        let structuredResults = await ConversationParser.shared.structuredResults(for: sessionId)
+        let completedTools = await ConversationParser.shared.completedToolIds(for: sessionId, cwd: cwd, source: sessionSource)
+        let toolResults = await ConversationParser.shared.toolResults(for: sessionId, cwd: cwd, source: sessionSource)
+        let structuredResults = await ConversationParser.shared.structuredResults(for: sessionId, cwd: cwd, source: sessionSource)
 
         // Also parse conversationInfo (summary, lastMessage, etc.)
         let conversationInfo = await ConversationParser.shared.parse(
             sessionId: sessionId,
-            cwd: cwd
+            cwd: cwd,
+            source: sessionSource
         )
 
         // Process loaded history
@@ -921,6 +936,7 @@ actor SessionStore {
     private func scheduleFileSync(sessionId: String, cwd: String) {
         // Cancel existing sync
         cancelPendingSync(sessionId: sessionId)
+        let source = sessions[sessionId]?.source ?? .claude
 
         // Schedule new debounced sync
         pendingSyncs[sessionId] = Task { [weak self, syncDebounceNs] in
@@ -930,7 +946,8 @@ actor SessionStore {
             // Parse incrementally - only get NEW messages since last call
             let result = await ConversationParser.shared.parseIncremental(
                 sessionId: sessionId,
-                cwd: cwd
+                cwd: cwd,
+                source: source
             )
 
             if result.clearDetected {
@@ -944,6 +961,7 @@ actor SessionStore {
             let payload = FileUpdatePayload(
                 sessionId: sessionId,
                 cwd: cwd,
+                source: source,
                 messages: result.newMessages,
                 isIncremental: !result.clearDetected,
                 completedToolIds: result.completedToolIds,

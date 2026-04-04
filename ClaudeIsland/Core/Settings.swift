@@ -38,6 +38,8 @@ enum AppSettings {
 
     private enum Keys {
         static let notificationSound = "notificationSound"
+        static let autoExpandOnTaskComplete = "autoExpandOnTaskComplete"
+        static let suppressAutoExpandWhenFocusedSession = "suppressAutoExpandWhenFocusedSession"
     }
 
     // MARK: - Notification Sound
@@ -53,6 +55,34 @@ enum AppSettings {
         }
         set {
             defaults.set(newValue.rawValue, forKey: Keys.notificationSound)
+        }
+    }
+
+    // MARK: - Behavior
+
+    /// Whether the notch should auto-expand when a session finishes and waits for input
+    static var autoExpandOnTaskComplete: Bool {
+        get {
+            if defaults.object(forKey: Keys.autoExpandOnTaskComplete) == nil {
+                return true
+            }
+            return defaults.bool(forKey: Keys.autoExpandOnTaskComplete)
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.autoExpandOnTaskComplete)
+        }
+    }
+
+    /// Whether a focused session should suppress auto-expansion
+    static var suppressAutoExpandWhenFocusedSession: Bool {
+        get {
+            if defaults.object(forKey: Keys.suppressAutoExpandWhenFocusedSession) == nil {
+                return true
+            }
+            return defaults.bool(forKey: Keys.suppressAutoExpandWhenFocusedSession)
+        }
+        set {
+            defaults.set(newValue, forKey: Keys.suppressAutoExpandWhenFocusedSession)
         }
     }
 }
