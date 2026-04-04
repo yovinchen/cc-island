@@ -263,16 +263,20 @@ class HookSocketServer {
     }
 
     /// Respond to a pending permission request by toolUseId
-    func respondToPermission(toolUseId: String, decision: String, reason: String? = nil) {
+    func respondToPermission(toolUseId: String, decision: String, reason: String? = nil,
+                             alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
         queue.async { [weak self] in
-            self?.sendPermissionResponse(toolUseId: toolUseId, decision: decision, reason: reason)
+            self?.sendPermissionResponse(toolUseId: toolUseId, decision: decision, reason: reason,
+                                         alwaysAllow: alwaysAllow, toolName: toolName, source: source)
         }
     }
 
     /// Respond to permission by sessionId (finds the most recent pending for that session)
-    func respondToPermissionBySession(sessionId: String, decision: String, reason: String? = nil) {
+    func respondToPermissionBySession(sessionId: String, decision: String, reason: String? = nil,
+                                      alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
         queue.async { [weak self] in
-            self?.sendPermissionResponseBySession(sessionId: sessionId, decision: decision, reason: reason)
+            self?.sendPermissionResponseBySession(sessionId: sessionId, decision: decision, reason: reason,
+                                                  alwaysAllow: alwaysAllow, toolName: toolName, source: source)
         }
     }
 
@@ -534,7 +538,51 @@ class HookSocketServer {
         eventHandler?(event)
     }
 
-    private func sendPermissionResponse(toolUseId: String, decision: String, reason: String?) {
+    /// Build response JSON data based on source type
+    private func buildResponseData(decision: String, reason: String?, alwaysAllow: Bool, toolName: String?, source: SessionSource) -> Data? {
+        if source == .claude {
+            return buildClaudeResponse(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName)
+        } else {
+            let response = HookResponse(decision: decision, reason: reason)
+            return try? JSONEncoder().encode(response)
+        }
+    }
+
+    /// Build hookSpecificOutput format for Claude Code
+    private func buildClaudeResponse(decision: String, reason: String?, alwaysAllow: Bool, toolName: String?) -> Data? {
+        var decisionDict: [String: Any] = [
+            "behavior": decision == "allow" ? "allow" : "deny"
+        ]
+        if decision == "deny" {
+            decisionDict["message"] = reason ?? "Denied by user"
+        }
+
+        var hookSpecificOutput: [String: Any] = [
+            "hookEventName": "PermissionRequest",
+            "decision": decisionDict
+        ]
+
+        if alwaysAllow && decision == "allow", let toolName = toolName {
+            hookSpecificOutput["updatedPermissions"] = [
+                "addRules": [
+                    [
+                        "toolName": toolName,
+                        "permission": "allow"
+                    ]
+                ],
+                "destination": "session"
+            ]
+        }
+
+        let responseDict: [String: Any] = [
+            "hookSpecificOutput": hookSpecificOutput
+        ]
+
+        return try? JSONSerialization.data(withJSONObject: responseDict, options: [])
+    }
+
+    private func sendPermissionResponse(toolUseId: String, decision: String, reason: String?,
+                                        alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
         permissionsLock.lock()
         guard let pending = pendingPermissions.removeValue(forKey: toolUseId) else {
             permissionsLock.unlock()
@@ -543,14 +591,13 @@ class HookSocketServer {
         }
         permissionsLock.unlock()
 
-        let response = HookResponse(decision: decision, reason: reason)
-        guard let data = try? JSONEncoder().encode(response) else {
+        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName, source: source) else {
             close(pending.clientSocket)
             return
         }
 
         let age = Date().timeIntervalSince(pending.receivedAt)
-        logger.info("Sending response: \(decision, privacy: .public) for \(pending.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
+        logger.info("Sending response: \(decision, privacy: .public)\(alwaysAllow ? " (always)" : "", privacy: .public) for \(pending.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
         data.withUnsafeBytes { bytes in
             guard let baseAddress = bytes.baseAddress else {
@@ -568,7 +615,8 @@ class HookSocketServer {
         close(pending.clientSocket)
     }
 
-    private func sendPermissionResponseBySession(sessionId: String, decision: String, reason: String?) {
+    private func sendPermissionResponseBySession(sessionId: String, decision: String, reason: String?,
+                                                  alwaysAllow: Bool = false, toolName: String? = nil, source: SessionSource = .claude) {
         permissionsLock.lock()
         let matchingPending = pendingPermissions.values
             .filter { $0.sessionId == sessionId }
@@ -584,15 +632,14 @@ class HookSocketServer {
         pendingPermissions.removeValue(forKey: pending.toolUseId)
         permissionsLock.unlock()
 
-        let response = HookResponse(decision: decision, reason: reason)
-        guard let data = try? JSONEncoder().encode(response) else {
+        guard let data = buildResponseData(decision: decision, reason: reason, alwaysAllow: alwaysAllow, toolName: toolName, source: source) else {
             close(pending.clientSocket)
             permissionFailureHandler?(sessionId, pending.toolUseId)
             return
         }
 
         let age = Date().timeIntervalSince(pending.receivedAt)
-        logger.info("Sending response: \(decision, privacy: .public) for \(sessionId.prefix(8), privacy: .public) tool:\(pending.toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
+        logger.info("Sending response: \(decision, privacy: .public)\(alwaysAllow ? " (always)" : "", privacy: .public) for \(sessionId.prefix(8), privacy: .public) tool:\(pending.toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
         var writeSuccess = false
         data.withUnsafeBytes { bytes in
