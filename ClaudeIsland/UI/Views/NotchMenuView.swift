@@ -25,6 +25,7 @@ struct NotchMenuView: View {
     @State private var autoHideWhenIdle: Bool = AppSettings.autoHideWhenIdle
     @State private var showUsageData: Bool = AppSettings.showUsageData
     @State private var globalShortcutEnabled: Bool = AppSettings.globalShortcutEnabled
+    @State private var autoPopupOnApproval: Bool = AppSettings.autoPopupOnApproval
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -57,6 +58,15 @@ struct NotchMenuView: View {
                 ) {
                     autoExpandOnTaskComplete.toggle()
                     AppSettings.autoExpandOnTaskComplete = autoExpandOnTaskComplete
+                }
+
+                MenuToggleRow(
+                    icon: "bell.badge",
+                    label: String(localized: "settings.auto_popup_approval"),
+                    isOn: autoPopupOnApproval
+                ) {
+                    autoPopupOnApproval.toggle()
+                    AppSettings.autoPopupOnApproval = autoPopupOnApproval
                 }
 
                 MenuToggleRow(
@@ -200,6 +210,7 @@ struct NotchMenuView: View {
         autoHideWhenIdle = AppSettings.autoHideWhenIdle
         showUsageData = AppSettings.showUsageData
         globalShortcutEnabled = AppSettings.globalShortcutEnabled
+        autoPopupOnApproval = AppSettings.autoPopupOnApproval
         screenSelector.refreshScreens()
     }
 }
