@@ -75,6 +75,7 @@ struct ClaudeInstancesView: View {
                         onChat: { openChat(session) },
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
+                        onAlwaysAllow: { alwaysAllowSession(session) },
                         onReject: { rejectSession(session) }
                     )
                     .id(session.stableId)
@@ -88,14 +89,8 @@ struct ClaudeInstancesView: View {
     // MARK: - Actions
 
     private func focusSession(_ session: SessionState) {
-        guard session.isInTmux else { return }
-
         Task {
-            if let pid = session.pid {
-                _ = await YabaiController.shared.focusWindow(forClaudePid: pid)
-            } else {
-                _ = await YabaiController.shared.focusWindow(forWorkingDirectory: session.cwd)
-            }
+            _ = await TerminalFocuser.shared.focusTerminal(session: session)
         }
     }
 
@@ -105,6 +100,10 @@ struct ClaudeInstancesView: View {
 
     private func approveSession(_ session: SessionState) {
         sessionMonitor.approvePermission(sessionId: session.sessionId)
+    }
+
+    private func alwaysAllowSession(_ session: SessionState) {
+        sessionMonitor.alwaysAllowPermission(sessionId: session.sessionId)
     }
 
     private func rejectSession(_ session: SessionState) {
@@ -124,19 +123,23 @@ struct InstanceRow: View {
     let onChat: () -> Void
     let onArchive: () -> Void
     let onApprove: () -> Void
+    let onAlwaysAllow: () -> Void
     let onReject: () -> Void
 
     @State private var isHovered = false
     @State private var spinnerPhase = 0
     @State private var isYabaiAvailable = false
+    @State private var showApprovalUI = false
+    @State private var approvalShowTime: Date? = nil
 
     private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
     private let spinnerSymbols = ["·", "✢", "✳", "∗", "✻", "✽"]
     private let spinnerTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
+    private let minApprovalDisplaySeconds: TimeInterval = 2.0
 
-    /// Whether we're showing the approval UI
+    /// Whether we're showing the approval UI (with minimum display time protection)
     private var isWaitingForApproval: Bool {
-        session.phase.isWaitingForApproval
+        showApprovalUI
     }
 
     /// Whether the pending tool requires interactive input (not just approve/deny)
@@ -157,6 +160,30 @@ struct InstanceRow: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white)
                     .lineLimit(1)
+
+                // Source and terminal badges
+                if session.source != .claude || session.terminalAppName != nil {
+                    HStack(spacing: 4) {
+                        if session.source != .claude {
+                            Text(session.source.displayName)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white.opacity(0.7))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
+                        if let termName = session.terminalAppName {
+                            Text(termName)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundColor(.white.opacity(0.5))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 1)
+                                .background(Color.white.opacity(0.06))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
 
                 // Show tool call when waiting for approval, otherwise last activity
                 if isWaitingForApproval, let toolName = session.pendingToolName {
@@ -234,8 +261,13 @@ struct InstanceRow: View {
                         onChat()
                     }
 
-                    // Go to Terminal button (only if yabai available)
-                    if isYabaiAvailable {
+                    // Go to Terminal button
+                    if session.canFocusTerminal {
+                        TerminalButton(
+                            isEnabled: true,
+                            onTap: { onFocus() }
+                        )
+                    } else if isYabaiAvailable {
                         TerminalButton(
                             isEnabled: session.isInTmux,
                             onTap: { onFocus() }
@@ -247,6 +279,7 @@ struct InstanceRow: View {
                 InlineApprovalButtons(
                     onChat: onChat,
                     onApprove: onApprove,
+                    onAlwaysAllow: onAlwaysAllow,
                     onReject: onReject
                 )
                 .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -257,8 +290,8 @@ struct InstanceRow: View {
                         onChat()
                     }
 
-                    // Focus icon (only for tmux instances with yabai)
-                    if session.isInTmux && isYabaiAvailable {
+                    // Focus icon (for sessions with focusable terminal)
+                    if session.canFocusTerminal || (session.isInTmux && isYabaiAvailable) {
                         IconButton(icon: "eye") {
                             onFocus()
                         }
@@ -289,6 +322,39 @@ struct InstanceRow: View {
         .onHover { isHovered = $0 }
         .task {
             isYabaiAvailable = await WindowFinder.shared.isYabaiAvailable()
+        }
+        .onChange(of: session.phase) { oldPhase, newPhase in
+            if newPhase.isWaitingForApproval && !showApprovalUI {
+                showApprovalUI = true
+                approvalShowTime = Date()
+            } else if !newPhase.isWaitingForApproval && showApprovalUI {
+                // Check minimum display time
+                if let showTime = approvalShowTime {
+                    let elapsed = Date().timeIntervalSince(showTime)
+                    if elapsed >= minApprovalDisplaySeconds {
+                        showApprovalUI = false
+                        approvalShowTime = nil
+                    } else {
+                        let remaining = minApprovalDisplaySeconds - elapsed
+                        DispatchQueue.main.asyncAfter(deadline: .now() + remaining) {
+                            // Only hide if still not waiting for approval
+                            if !session.phase.isWaitingForApproval {
+                                showApprovalUI = false
+                                approvalShowTime = nil
+                            }
+                        }
+                    }
+                } else {
+                    showApprovalUI = false
+                }
+            }
+        }
+        .onAppear {
+            // Initialize approval UI state from current phase
+            if session.phase.isWaitingForApproval {
+                showApprovalUI = true
+                approvalShowTime = Date()
+            }
         }
     }
 
@@ -324,15 +390,17 @@ struct InstanceRow: View {
 
 // MARK: - Inline Approval Buttons
 
-/// Compact inline approval buttons with staggered animation
+/// Compact inline approval buttons with staggered animation (three-tier: Deny / Allow Once / Always Allow)
 struct InlineApprovalButtons: View {
     let onChat: () -> Void
     let onApprove: () -> Void
+    let onAlwaysAllow: () -> Void
     let onReject: () -> Void
 
     @State private var showChatButton = false
     @State private var showDenyButton = false
     @State private var showAllowButton = false
+    @State private var showAlwaysAllowButton = false
 
     var body: some View {
         HStack(spacing: 6) {
@@ -343,13 +411,14 @@ struct InlineApprovalButtons: View {
             .opacity(showChatButton ? 1 : 0)
             .scaleEffect(showChatButton ? 1 : 0.8)
 
+            // Deny
             Button {
                 onReject()
             } label: {
                 Text(String(localized: "instances.deny"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.6))
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(Color.white.opacity(0.1))
                     .clipShape(Capsule())
@@ -358,20 +427,37 @@ struct InlineApprovalButtons: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
+            // Allow Once
             Button {
                 onApprove()
             } label: {
-                Text(String(localized: "instances.approve"))
+                Text(String(localized: "instances.allow_once"))
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 10)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.9))
+                    .background(Color.white.opacity(0.2))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .opacity(showAllowButton ? 1 : 0)
             .scaleEffect(showAllowButton ? 1 : 0.8)
+
+            // Always Allow (most prominent)
+            Button {
+                onAlwaysAllow()
+            } label: {
+                Text(String(localized: "instances.always_allow"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.9))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showAlwaysAllowButton ? 1 : 0)
+            .scaleEffect(showAlwaysAllowButton ? 1 : 0.8)
         }
         .onAppear {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.0)) {
@@ -382,6 +468,9 @@ struct InlineApprovalButtons: View {
             }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.1)) {
                 showAllowButton = true
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.15)) {
+                showAlwaysAllowButton = true
             }
         }
     }

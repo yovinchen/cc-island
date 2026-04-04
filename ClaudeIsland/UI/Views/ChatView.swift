@@ -41,14 +41,22 @@ struct ChatView: View {
         self._hasLoadedOnce = State(initialValue: alreadyLoaded)
     }
 
-    /// Whether we're waiting for approval
+    @State private var showApprovalUI = false
+    @State private var approvalShowTime: Date? = nil
+    @State private var cachedApprovalTool: String? = nil
+    private let minApprovalDisplaySeconds: TimeInterval = 2.0
+
+    /// Whether we're waiting for approval (with minimum display time protection)
     private var isWaitingForApproval: Bool {
-        session.phase.isWaitingForApproval
+        showApprovalUI
     }
 
     /// Extract the tool name if waiting for approval
     private var approvalTool: String? {
-        session.phase.approvalToolName
+        if showApprovalUI {
+            return cachedApprovalTool ?? session.phase.approvalToolName
+        }
+        return session.phase.approvalToolName
     }
 
     
@@ -148,8 +156,37 @@ struct ChatView: View {
                updated != session {
                 // Check if permission was just accepted (transition from waitingForApproval to processing)
                 let wasWaiting = isWaitingForApproval
+                let oldPhase = session.phase
                 session = updated
                 let isNowProcessing = updated.phase == .processing
+
+                // Manage approval UI minimum display time
+                if updated.phase.isWaitingForApproval && !showApprovalUI {
+                    showApprovalUI = true
+                    approvalShowTime = Date()
+                    cachedApprovalTool = updated.phase.approvalToolName
+                } else if !updated.phase.isWaitingForApproval && showApprovalUI {
+                    if let showTime = approvalShowTime {
+                        let elapsed = Date().timeIntervalSince(showTime)
+                        if elapsed >= minApprovalDisplaySeconds {
+                            showApprovalUI = false
+                            approvalShowTime = nil
+                            cachedApprovalTool = nil
+                        } else {
+                            let remaining = minApprovalDisplaySeconds - elapsed
+                            DispatchQueue.main.asyncAfter(deadline: .now() + remaining) {
+                                if !session.phase.isWaitingForApproval {
+                                    showApprovalUI = false
+                                    approvalShowTime = nil
+                                    cachedApprovalTool = nil
+                                }
+                            }
+                        }
+                    } else {
+                        showApprovalUI = false
+                        cachedApprovalTool = nil
+                    }
+                }
 
                 if wasWaiting && isNowProcessing {
                     // Scroll to bottom after permission accepted (with slight delay)
@@ -168,6 +205,13 @@ struct ChatView: View {
             }
         }
         .onAppear {
+            // Initialize approval UI state from current session phase
+            if session.phase.isWaitingForApproval {
+                showApprovalUI = true
+                approvalShowTime = Date()
+                cachedApprovalTool = session.phase.approvalToolName
+            }
+
             // Auto-focus input when chat opens and tmux messaging is available
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 if canSendMessages {
@@ -412,7 +456,10 @@ struct ChatView: View {
         ChatApprovalBar(
             tool: tool,
             toolInput: session.pendingToolInput,
+            source: session.source,
+            terminalAppName: session.terminalAppName,
             onApprove: { approvePermission() },
+            onAlwaysAllow: { alwaysAllowPermission() },
             onDeny: { denyPermission() }
         )
     }
@@ -446,16 +493,16 @@ struct ChatView: View {
 
     private func focusTerminal() {
         Task {
-            if let pid = session.pid {
-                _ = await YabaiController.shared.focusWindow(forClaudePid: pid)
-            } else {
-                _ = await YabaiController.shared.focusWindow(forWorkingDirectory: session.cwd)
-            }
+            _ = await TerminalFocuser.shared.focusTerminal(session: session)
         }
     }
 
     private func approvePermission() {
         sessionMonitor.approvePermission(sessionId: sessionId)
+    }
+
+    private func alwaysAllowPermission() {
+        sessionMonitor.alwaysAllowPermission(sessionId: sessionId)
     }
 
     private func denyPermission() {
@@ -1045,24 +1092,48 @@ struct ChatInteractivePromptBar: View {
 
 // MARK: - Chat Approval Bar
 
-/// Approval bar for the chat view with animated buttons
+/// Approval bar for the chat view with animated buttons (three-tier)
 struct ChatApprovalBar: View {
     let tool: String
     let toolInput: String?
+    let source: SessionSource
+    let terminalAppName: String?
     let onApprove: () -> Void
+    let onAlwaysAllow: () -> Void
     let onDeny: () -> Void
 
     @State private var showContent = false
-    @State private var showAllowButton = false
     @State private var showDenyButton = false
+    @State private var showAllowButton = false
+    @State private var showAlwaysAllowButton = false
 
     var body: some View {
         HStack(spacing: 12) {
-            // Tool info
+            // Tool info + source/terminal badges
             VStack(alignment: .leading, spacing: 2) {
-                Text(MCPToolFormatter.formatToolName(tool))
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundColor(TerminalColors.amber)
+                HStack(spacing: 6) {
+                    Text(MCPToolFormatter.formatToolName(tool))
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(TerminalColors.amber)
+                    if source != .claude {
+                        Text(source.displayName)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white.opacity(0.7))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                    if let termName = terminalAppName {
+                        Text(termName)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                }
                 if let input = toolInput {
                     Text(input)
                         .font(.system(size: 11))
@@ -1082,7 +1153,7 @@ struct ChatApprovalBar: View {
                 Text(String(localized: "chat.deny"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(Color.white.opacity(0.1))
                     .clipShape(Capsule())
@@ -1091,21 +1162,37 @@ struct ChatApprovalBar: View {
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
 
-            // Allow button
+            // Allow Once button
             Button {
                 onApprove()
             } label: {
-                Text(String(localized: "chat.approve"))
+                Text(String(localized: "chat.allow_once"))
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 16)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.95))
+                    .background(Color.white.opacity(0.2))
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             .opacity(showAllowButton ? 1 : 0)
             .scaleEffect(showAllowButton ? 1 : 0.8)
+
+            // Always Allow button (most prominent)
+            Button {
+                onAlwaysAllow()
+            } label: {
+                Text(String(localized: "chat.always_allow"))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.95))
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showAlwaysAllowButton ? 1 : 0)
+            .scaleEffect(showAlwaysAllowButton ? 1 : 0.8)
         }
         .frame(minHeight: 44)  // Consistent height with other bars
         .padding(.horizontal, 16)
@@ -1120,6 +1207,9 @@ struct ChatApprovalBar: View {
             }
             withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.15)) {
                 showAllowButton = true
+            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.2)) {
+                showAlwaysAllowButton = true
             }
         }
     }
