@@ -32,7 +32,7 @@ struct NotchMenuView: View {
                 // Back button
                 MenuRow(
                     icon: "chevron.left",
-                    label: "Back"
+                    label: String(localized: "menu.back")
                 ) {
                     viewModel.toggleMenu()
                 }
@@ -52,7 +52,7 @@ struct NotchMenuView: View {
                 // Behavior settings
                 MenuToggleRow(
                     icon: "arrow.down.to.line.compact",
-                    label: "Auto-expand on Task complete",
+                    label: String(localized: "settings.auto_expand"),
                     isOn: autoExpandOnTaskComplete
                 ) {
                     autoExpandOnTaskComplete.toggle()
@@ -61,7 +61,7 @@ struct NotchMenuView: View {
 
                 MenuToggleRow(
                     icon: "scope",
-                    label: "Suppress when focused",
+                    label: String(localized: "settings.suppress_focused"),
                     isOn: suppressAutoExpandWhenFocusedSession
                 ) {
                     suppressAutoExpandWhenFocusedSession.toggle()
@@ -70,7 +70,7 @@ struct NotchMenuView: View {
 
                 MenuToggleRow(
                     icon: "eye.slash",
-                    label: "Auto-hide when idle",
+                    label: String(localized: "settings.auto_hide_idle"),
                     isOn: autoHideWhenIdle
                 ) {
                     autoHideWhenIdle.toggle()
@@ -80,7 +80,7 @@ struct NotchMenuView: View {
 
                 MenuToggleRow(
                     icon: "chart.bar",
-                    label: "Show usage data",
+                    label: String(localized: "settings.show_usage"),
                     isOn: showUsageData
                 ) {
                     showUsageData.toggle()
@@ -89,7 +89,7 @@ struct NotchMenuView: View {
 
                 MenuToggleRow(
                     icon: "keyboard",
-                    label: "Global shortcut (⌘⇧I)",
+                    label: String(localized: "settings.global_shortcut"),
                     isOn: globalShortcutEnabled
                 ) {
                     globalShortcutEnabled.toggle()
@@ -111,7 +111,7 @@ struct NotchMenuView: View {
                 // System settings
                 MenuToggleRow(
                     icon: "power",
-                    label: "Launch at Login",
+                    label: String(localized: "menu.launch_at_login"),
                     isOn: launchAtLogin
                 ) {
                     do {
@@ -138,14 +138,14 @@ struct NotchMenuView: View {
 
                 MenuRow(
                     icon: "gearshape",
-                    label: "Open Settings"
+                    label: String(localized: "menu.open_settings")
                 ) {
                     SettingsWindowController.show()
                 }
 
                 MenuRow(
                     icon: "doc.text",
-                    label: "Export Diagnostic Log"
+                    label: String(localized: "menu.export_log")
                 ) {
                     Task {
                         let log = await DiagnosticLogger.shared.export()
@@ -159,7 +159,7 @@ struct NotchMenuView: View {
 
                 MenuRow(
                     icon: "star",
-                    label: "Star on GitHub"
+                    label: String(localized: "menu.star_github")
                 ) {
                     if let url = URL(string: "https://github.com/farouqaldori/claude-island") {
                         NSWorkspace.shared.open(url)
@@ -172,7 +172,7 @@ struct NotchMenuView: View {
 
                 MenuRow(
                     icon: "xmark.circle",
-                    label: "Quit",
+                    label: String(localized: "menu.quit"),
                     isDestructive: true
                 ) {
                     NSApplication.shared.terminate(nil)
@@ -221,7 +221,7 @@ struct HookStatusSection: View {
                 Image(systemName: "link")
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.5))
-                Text("AI Tool Hooks")
+                Text(String(localized: "hooks.title"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.5))
                 Spacer()
@@ -230,7 +230,7 @@ struct HookStatusSection: View {
                     HookRepairManager.shared.repairAllNow()
                     refreshStatuses()
                 } label: {
-                    Text("Repair All")
+                    Text(String(localized: "hooks.repair_all"))
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.5))
                 }
@@ -260,7 +260,7 @@ struct HookStatusSection: View {
             // Auto-repair toggle
             MenuToggleRow(
                 icon: "wrench.and.screwdriver",
-                label: "Auto-repair hooks",
+                label: String(localized: "settings.hooks.auto_repair"),
                 isOn: autoRepairEnabled
             ) {
                 autoRepairEnabled.toggle()
@@ -321,8 +321,8 @@ struct HookSourceRow: View {
     }
 
     private var statusText: String {
-        if !isEnabled { return "Disabled" }
-        return isInstalled ? "Active" : "Not Installed"
+        if !isEnabled { return String(localized: "hooks.status.disabled") }
+        return isInstalled ? String(localized: "hooks.status.active") : String(localized: "hooks.status.not_installed")
     }
 }
 
@@ -399,7 +399,7 @@ struct UpdateRow: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(TerminalColors.green)
-                Text("Up to date")
+                Text(String(localized: "update.up_to_date"))
                     .font(.system(size: 11))
                     .foregroundColor(TerminalColors.green)
             }
@@ -452,7 +452,7 @@ struct UpdateRow: View {
             }
 
         case .error:
-            Text("Retry")
+            Text(String(localized: "update.retry"))
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.5))
         }
@@ -507,23 +507,23 @@ struct UpdateRow: View {
     private var label: String {
         switch updateManager.state {
         case .idle:
-            return "Check for Updates"
+            return String(localized: "menu.check_updates")
         case .checking:
-            return "Checking..."
+            return String(localized: "update.checking")
         case .upToDate:
-            return "Check for Updates"
+            return String(localized: "menu.check_updates")
         case .found:
-            return "Download Update"
+            return String(localized: "update.download")
         case .downloading:
-            return "Downloading..."
+            return String(localized: "update.downloading")
         case .extracting:
-            return "Extracting..."
+            return String(localized: "update.extracting")
         case .readyToInstall:
-            return "Install & Relaunch"
+            return String(localized: "update.install_relaunch")
         case .installing:
-            return "Installing..."
+            return String(localized: "update.installing")
         case .error:
-            return "Update failed"
+            return String(localized: "update.failed")
         }
     }
 
@@ -586,7 +586,7 @@ struct AccessibilityRow: View {
                 .foregroundColor(textColor)
                 .frame(width: 16)
 
-            Text("Accessibility")
+            Text(String(localized: "menu.accessibility"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(textColor)
 
@@ -597,12 +597,12 @@ struct AccessibilityRow: View {
                     .fill(TerminalColors.green)
                     .frame(width: 6, height: 6)
 
-                Text("On")
+                Text(String(localized: "menu.accessibility.on"))
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.4))
             } else {
                 Button(action: openAccessibilitySettings) {
-                    Text("Enable")
+                    Text(String(localized: "menu.accessibility.enable"))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.black)
                         .padding(.horizontal, 10)
@@ -705,7 +705,7 @@ struct MenuToggleRow: View {
                     .fill(isOn ? TerminalColors.green : Color.white.opacity(0.3))
                     .frame(width: 6, height: 6)
 
-                Text(isOn ? "On" : "Off")
+                Text(isOn ? String(localized: "general.on") : String(localized: "general.off"))
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.4))
             }

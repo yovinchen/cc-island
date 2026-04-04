@@ -61,13 +61,13 @@ struct UsageHeaderDisplay: View {
                 // Context window usage ring
                 if let contextPercent = usageManager.aggregatedUsage.contextWindowPercent {
                     UsageRing(progress: contextPercent, size: 14, lineWidth: 1.5)
-                        .help("Context: \(Int(contextPercent * 100))%")
+                        .help(String(format: String(localized: "usage.context"), Int(contextPercent * 100)))
                 }
 
                 // API rate limit ring
                 if let primaryPercent = usageManager.aggregatedUsage.primaryUsedPercent {
                     UsageRing(progress: primaryPercent, size: 14, lineWidth: 1.5)
-                        .help("API Usage: \(Int(primaryPercent * 100))%")
+                        .help(String(format: String(localized: "usage.api"), Int(primaryPercent * 100)))
                 }
             }
         }

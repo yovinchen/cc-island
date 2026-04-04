@@ -33,7 +33,7 @@ struct ScreenPickerRow: View {
                         .foregroundColor(textColor)
                         .frame(width: 16)
 
-                    Text("Screen")
+                    Text(String(localized: "settings.screen.label"))
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(textColor)
 
@@ -63,8 +63,8 @@ struct ScreenPickerRow: View {
                 VStack(spacing: 2) {
                     // Automatic option
                     ScreenOptionRow(
-                        label: "Automatic",
-                        sublabel: "Built-in or Main",
+                        label: String(localized: "settings.screen.automatic"),
+                        sublabel: String(localized: "settings.screen.automatic_desc"),
                         isSelected: screenSelector.selectionMode == .automatic
                     ) {
                         screenSelector.selectAutomatic()
@@ -111,10 +111,10 @@ struct ScreenPickerRow: View {
     private func screenSublabel(for screen: NSScreen) -> String? {
         var parts: [String] = []
         if screen.isBuiltinDisplay {
-            parts.append("Built-in")
+            parts.append(String(localized: "settings.screen.builtin"))
         }
         if screen == NSScreen.main {
-            parts.append("Main")
+            parts.append(String(localized: "settings.screen.main"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }

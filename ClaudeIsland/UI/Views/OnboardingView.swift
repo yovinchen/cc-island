@@ -58,11 +58,11 @@ struct OnboardingView: View {
                 .font(.system(size: 32))
                 .foregroundColor(TerminalColors.green)
 
-            Text("Welcome to Claude Island")
+            Text(String(localized: "onboarding.welcome.title"))
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
 
-            Text("Your AI coding sessions, right in the notch.\nMonitor progress, approve tools, and stay in flow.")
+            Text(String(localized: "onboarding.welcome.desc"))
                 .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
@@ -74,7 +74,7 @@ struct OnboardingView: View {
             Button {
                 withAnimation { currentStep = 1 }
             } label: {
-                Text("Get Started")
+                Text(String(localized: "onboarding.welcome.button"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
@@ -95,11 +95,11 @@ struct OnboardingView: View {
     private var toolDetectionStep: some View {
         VStack(spacing: 0) {
             VStack(spacing: 6) {
-                Text("Detected Tools")
+                Text(String(localized: "onboarding.tools.title"))
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.white)
 
-                Text("Select which AI tools to integrate with.")
+                Text(String(localized: "onboarding.tools.desc"))
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -133,7 +133,7 @@ struct OnboardingView: View {
                                 .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.6))
                                 .frame(width: 16)
-                            Text("Auto-repair hooks")
+                            Text(String(localized: "onboarding.auto_repair"))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.white.opacity(0.7))
                             Spacer()
@@ -155,7 +155,7 @@ struct OnboardingView: View {
                 Button {
                     skipAndFinish()
                 } label: {
-                    Text("Skip")
+                    Text(String(localized: "onboarding.skip"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.5))
                         .frame(maxWidth: .infinity)
@@ -170,7 +170,7 @@ struct OnboardingView: View {
                         if isInstalling {
                             ProgressView().scaleEffect(0.5).frame(width: 12, height: 12)
                         }
-                        Text(selectedTools.isEmpty ? "Continue" : "Install \(selectedTools.count) Hook\(selectedTools.count == 1 ? "" : "s")")
+                        Text(selectedTools.isEmpty ? String(localized: "onboarding.continue") : (selectedTools.count == 1 ? String(localized: "onboarding.install_hook_single") : String(format: String(localized: "onboarding.install_hooks %lld"), selectedTools.count)))
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(selectedTools.isEmpty ? .white.opacity(0.7) : .black)
@@ -203,14 +203,14 @@ struct OnboardingView: View {
                 .font(.system(size: 32))
                 .foregroundColor(TerminalColors.green)
 
-            Text("You're all set!")
+            Text(String(localized: "onboarding.complete.title"))
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
 
             VStack(spacing: 8) {
-                shortcutHint(key: "\u{2318}\u{21E7}I", label: "Toggle Claude Island")
-                shortcutHint(key: "Hover", label: "Preview sessions in the notch")
-                shortcutHint(key: "Click", label: "Expand for full session view")
+                shortcutHint(key: "\u{2318}\u{21E7}I", label: String(localized: "onboarding.shortcut.toggle"))
+                shortcutHint(key: "Hover", label: String(localized: "onboarding.shortcut.hover"))
+                shortcutHint(key: "Click", label: String(localized: "onboarding.shortcut.click"))
             }
             .padding(.horizontal, 24)
 
@@ -220,7 +220,7 @@ struct OnboardingView: View {
                 AppSettings.onboardingCompleted = true
                 onComplete()
             } label: {
-                Text("Done")
+                Text(String(localized: "onboarding.complete.button"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)

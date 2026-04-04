@@ -245,7 +245,7 @@ struct ChatView: View {
             ProgressView()
                 .progressViewStyle(CircularProgressViewStyle(tint: .white.opacity(0.4)))
                 .scaleEffect(0.8)
-            Text("Loading messages...")
+            Text(String(localized: "chat.loading"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.4))
         }
@@ -259,7 +259,7 @@ struct ChatView: View {
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 24))
                 .foregroundColor(.white.opacity(0.2))
-            Text("No messages yet")
+            Text(String(localized: "chat.empty"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white.opacity(0.4))
         }
@@ -360,7 +360,7 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField(canSendMessages ? "Message Claude..." : "Open Claude Code in tmux to enable messaging", text: $inputText)
+            TextField(canSendMessages ? String(localized: "chat.input.placeholder") : String(localized: "chat.input.disabled"), text: $inputText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .foregroundColor(canSendMessages ? .white : .white.opacity(0.4))
@@ -583,7 +583,7 @@ struct AssistantMessageView: View {
 // MARK: - Processing Indicator
 
 struct ProcessingIndicatorView: View {
-    private let baseTexts = ["Processing", "Working"]
+    private let baseTexts = [String(localized: "chat.processing"), String(localized: "chat.working")]
     private let color = Color(red: 0.85, green: 0.47, blue: 0.34) // Claude orange
     private let baseText: String
 
@@ -808,7 +808,7 @@ struct SubagentToolsList: View {
         VStack(alignment: .leading, spacing: 2) {
             // Show count of older hidden tools at top
             if hiddenCount > 0 {
-                Text("+\(hiddenCount) more tool uses")
+                Text(String(format: String(localized: "chat.more_tool_uses %lld"), hiddenCount))
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.4))
             }
@@ -892,7 +892,7 @@ struct SubagentToolsSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Subagent used \(tools.count) tools:")
+            Text(String(format: String(localized: "chat.subagent_tools %lld"), tools.count))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.white.opacity(0.5))
 
@@ -971,7 +971,7 @@ struct ThinkingView: View {
 struct InterruptedMessageView: View {
     var body: some View {
         HStack {
-            Text("Interrupted")
+            Text(String(localized: "chat.interrupted"))
                 .font(.system(size: 13))
                 .foregroundColor(.red)
             Spacer()
@@ -996,7 +996,7 @@ struct ChatInteractivePromptBar: View {
                 Text(MCPToolFormatter.formatToolName("AskUserQuestion"))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundColor(TerminalColors.amber)
-                Text("Claude Code needs your input")
+                Text(String(localized: "chat.needs_input"))
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.5))
                     .lineLimit(1)
@@ -1015,7 +1015,7 @@ struct ChatInteractivePromptBar: View {
                 HStack(spacing: 4) {
                     Image(systemName: "terminal")
                         .font(.system(size: 11, weight: .medium))
-                    Text("Terminal")
+                    Text(String(localized: "chat.terminal"))
                         .font(.system(size: 13, weight: .medium))
                 }
                 .foregroundColor(isInTmux ? .black : .white.opacity(0.4))
@@ -1079,7 +1079,7 @@ struct ChatApprovalBar: View {
             Button {
                 onDeny()
             } label: {
-                Text("Deny")
+                Text(String(localized: "chat.deny"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
                     .padding(.horizontal, 16)
@@ -1095,7 +1095,7 @@ struct ChatApprovalBar: View {
             Button {
                 onApprove()
             } label: {
-                Text("Allow")
+                Text(String(localized: "chat.approve"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.black)
                     .padding(.horizontal, 16)
@@ -1140,7 +1140,7 @@ struct NewMessagesIndicator: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 10, weight: .bold))
 
-                Text(count == 1 ? "1 new message" : "\(count) new messages")
+                Text(count == 1 ? String(localized: "chat.new_message") : String(format: String(localized: "chat.new_messages %lld"), count))
                     .font(.system(size: 12, weight: .medium))
             }
             .foregroundColor(.white)

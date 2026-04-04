@@ -27,11 +27,11 @@ struct HookSetupView: View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 8) {
-                Text("Hook Setup")
+                Text(String(localized: "hookSetup.title"))
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
 
-                Text("Choose which AI tools to integrate with.\nHooks will only be installed for tools you select.")
+                Text(String(localized: "hookSetup.desc"))
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.6))
                     .multilineTextAlignment(.center)
@@ -75,11 +75,11 @@ struct HookSetupView: View {
                                 .frame(width: 16)
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Auto-repair hooks")
+                                Text(String(localized: "hookSetup.auto_repair"))
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.white.opacity(0.8))
 
-                                Text("Automatically reinstall if removed by other tools")
+                                Text(String(localized: "hookSetup.auto_repair_desc"))
                                     .font(.system(size: 10))
                                     .foregroundColor(.white.opacity(0.4))
                             }
@@ -107,7 +107,7 @@ struct HookSetupView: View {
                 Button {
                     skipSetup()
                 } label: {
-                    Text("Skip")
+                    Text(String(localized: "hookSetup.skip"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.5))
                         .frame(maxWidth: .infinity)
@@ -129,7 +129,7 @@ struct HookSetupView: View {
                                 .font(.system(size: 11, weight: .bold))
                         }
 
-                        Text(installComplete ? "Done" : "Install \(selectedTools.count) Hook\(selectedTools.count == 1 ? "" : "s")")
+                        Text(installComplete ? String(localized: "hookSetup.done") : (selectedTools.count == 1 ? String(localized: "hookSetup.install_single") : String(format: String(localized: "hookSetup.install %lld"), selectedTools.count)))
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundColor(selectedTools.isEmpty ? .white.opacity(0.3) : .black)
@@ -240,7 +240,7 @@ struct ToolSetupRow: View {
 
                 // Detection badge
                 if isDetected {
-                    Text("Detected")
+                    Text(String(localized: "hookSetup.detected"))
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundColor(TerminalColors.green)
                         .padding(.horizontal, 6)
@@ -250,7 +250,7 @@ struct ToolSetupRow: View {
                                 .fill(TerminalColors.green.opacity(0.15))
                         )
                 } else {
-                    Text("Not Found")
+                    Text(String(localized: "hookSetup.not_found"))
                         .font(.system(size: 9))
                         .foregroundColor(.white.opacity(0.3))
                 }

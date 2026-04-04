@@ -16,11 +16,11 @@ struct SettingsView: View {
         HSplitView {
             // Sidebar
             VStack(alignment: .leading, spacing: 2) {
-                settingsTab(icon: "gearshape", label: "General", index: 0)
-                settingsTab(icon: "link", label: "Hooks", index: 1)
-                settingsTab(icon: "speaker.wave.2", label: "Sound", index: 2)
-                settingsTab(icon: "chart.bar", label: "Usage", index: 3)
-                settingsTab(icon: "doc.text.magnifyingglass", label: "Diagnostics", index: 4)
+                settingsTab(icon: "gearshape", label: String(localized: "settings.tab.general"), index: 0)
+                settingsTab(icon: "link", label: String(localized: "settings.tab.hooks"), index: 1)
+                settingsTab(icon: "speaker.wave.2", label: String(localized: "settings.tab.sound"), index: 2)
+                settingsTab(icon: "chart.bar", label: String(localized: "settings.tab.usage"), index: 3)
+                settingsTab(icon: "doc.text.magnifyingglass", label: String(localized: "settings.tab.diagnostics"), index: 4)
                 Spacer()
             }
             .frame(width: 160)
@@ -77,24 +77,24 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var generalTab: some View {
-        sectionHeader("Behavior")
+        sectionHeader(String(localized: "settings.section.behavior"))
 
-        SettingsToggle(label: "Auto-expand on task complete",
+        SettingsToggle(label: String(localized: "settings.auto_expand"),
                       getter: { AppSettings.autoExpandOnTaskComplete },
                       setter: { AppSettings.autoExpandOnTaskComplete = $0 })
-        SettingsToggle(label: "Suppress auto-expand when focused",
+        SettingsToggle(label: String(localized: "settings.suppress_focused_desc"),
                       getter: { AppSettings.suppressAutoExpandWhenFocusedSession },
                       setter: { AppSettings.suppressAutoExpandWhenFocusedSession = $0 })
-        SettingsToggle(label: "Auto-hide when idle",
+        SettingsToggle(label: String(localized: "settings.auto_hide_idle"),
                       getter: { AppSettings.autoHideWhenIdle },
                       setter: { AppSettings.autoHideWhenIdle = $0 })
-        SettingsToggle(label: "Global shortcut (\u{2318}\u{21E7}I)",
+        SettingsToggle(label: String(localized: "settings.global_shortcut"),
                       getter: { AppSettings.globalShortcutEnabled },
                       setter: { AppSettings.globalShortcutEnabled = $0; KeyboardShortcutManager.shared.updateRegistration() })
 
         Divider().background(Color.white.opacity(0.1))
 
-        sectionHeader("System")
+        sectionHeader(String(localized: "settings.section.system"))
 
         LaunchAtLoginToggle()
     }
@@ -103,13 +103,13 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var hooksTab: some View {
-        sectionHeader("AI Tool Integrations")
+        sectionHeader(String(localized: "settings.hooks.integrations"))
 
         SettingsHookList()
 
         Divider().background(Color.white.opacity(0.1))
 
-        SettingsToggle(label: "Auto-repair hooks when removed",
+        SettingsToggle(label: String(localized: "settings.hooks.auto_repair_desc"),
                       getter: { AppSettings.autoRepairHooks },
                       setter: { AppSettings.autoRepairHooks = $0; HookRepairManager.shared.restart() })
     }
@@ -118,15 +118,15 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var soundTab: some View {
-        sectionHeader("Sound Theme")
+        sectionHeader(String(localized: "settings.sound.theme"))
 
         SoundThemePicker()
 
         Divider().background(Color.white.opacity(0.1))
 
-        sectionHeader("Audio Device")
+        sectionHeader(String(localized: "settings.sound.device"))
 
-        Text("Sound output automatically follows your active audio device.")
+        Text(String(localized: "settings.sound.device_desc"))
             .font(.system(size: 12))
             .foregroundColor(.white.opacity(0.5))
     }
@@ -135,13 +135,13 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var usageTab: some View {
-        sectionHeader("API Usage Display")
+        sectionHeader(String(localized: "settings.usage.title"))
 
-        SettingsToggle(label: "Show usage data in notch header",
+        SettingsToggle(label: String(localized: "settings.usage.show_desc"),
                       getter: { AppSettings.showUsageData },
                       setter: { AppSettings.showUsageData = $0 })
 
-        Text("API usage and context window data are displayed as ring indicators when a session is active.")
+        Text(String(localized: "settings.usage.detail"))
             .font(.system(size: 12))
             .foregroundColor(.white.opacity(0.5))
             .padding(.top, 4)
@@ -151,14 +151,14 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var diagnosticsTab: some View {
-        sectionHeader("Diagnostic Log")
+        sectionHeader(String(localized: "settings.diagnostics.title"))
 
-        Text("The diagnostic log captures hook, socket, and session events for troubleshooting.")
+        Text(String(localized: "settings.diagnostics.desc"))
             .font(.system(size: 12))
             .foregroundColor(.white.opacity(0.5))
 
         HStack(spacing: 12) {
-            Button("Copy Log to Clipboard") {
+            Button(String(localized: "settings.diagnostics.copy")) {
                 Task {
                     let log = await DiagnosticLogger.shared.export()
                     await MainActor.run {
@@ -169,7 +169,7 @@ struct SettingsView: View {
             }
             .buttonStyle(SettingsButtonStyle())
 
-            Button("Clear Log") {
+            Button(String(localized: "settings.diagnostics.clear")) {
                 Task { await DiagnosticLogger.shared.clear() }
             }
             .buttonStyle(SettingsButtonStyle(isDestructive: true))
@@ -178,7 +178,7 @@ struct SettingsView: View {
 
         Divider().background(Color.white.opacity(0.1))
 
-        sectionHeader("App Info")
+        sectionHeader(String(localized: "settings.app_info"))
 
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
@@ -223,7 +223,7 @@ struct LaunchAtLoginToggle: View {
     @State private var isOn = false
 
     var body: some View {
-        Toggle("Launch at login", isOn: $isOn)
+        Toggle(String(localized: "settings.launch_at_login"), isOn: $isOn)
             .toggleStyle(.switch)
             .font(.system(size: 13))
             .foregroundColor(.white.opacity(0.8))
@@ -266,7 +266,7 @@ struct SettingsHookList: View {
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.4))
 
-                    Button(AppSettings.isHookEnabled(for: source) ? "Disable" : "Enable") {
+                    Button(AppSettings.isHookEnabled(for: source) ? String(localized: "menu.hooks.disable") : String(localized: "menu.hooks.enable")) {
                         if AppSettings.isHookEnabled(for: source) {
                             HookInstaller.uninstallSource(source)
                         } else {
@@ -294,8 +294,8 @@ struct SettingsHookList: View {
     }
 
     private func statusText(for source: SessionSource) -> String {
-        if !AppSettings.isHookEnabled(for: source) { return "Disabled" }
-        return (statuses[source] ?? false) ? "Active" : "Not Installed"
+        if !AppSettings.isHookEnabled(for: source) { return String(localized: "hooks.status.disabled") }
+        return (statuses[source] ?? false) ? String(localized: "hooks.status.active") : String(localized: "hooks.status.not_installed")
     }
 }
 
@@ -303,7 +303,7 @@ struct SoundThemePicker: View {
     @State private var selected: SoundThemePack = AppSettings.soundThemePack
 
     var body: some View {
-        Picker("Theme", selection: $selected) {
+        Picker(String(localized: "settings.sound.theme_picker"), selection: $selected) {
             ForEach(SoundThemePack.allCases, id: \.self) { pack in
                 Text(pack.displayName).tag(pack)
             }

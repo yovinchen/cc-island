@@ -8,13 +8,62 @@
 "menu.accessibility" = "Accessibility";
 "menu.accessibility.enable" = "Enable";
 "menu.accessibility.on" = "On";
+"menu.open_settings" = "Open Settings";
+"menu.export_log" = "Export Diagnostic Log";
+"menu.auto_repair_hooks" = "Auto-repair hooks";
+"menu.hooks.enable" = "Enable";
+"menu.hooks.disable" = "Disable";
+
+/* Settings Tabs */
+"settings.tab.general" = "General";
+"settings.tab.hooks" = "Hooks";
+"settings.tab.sound" = "Sound";
+"settings.tab.usage" = "Usage";
+"settings.tab.diagnostics" = "Diagnostics";
+
+/* Settings Sections */
+"settings.section.behavior" = "Behavior";
+"settings.section.system" = "System";
 
 /* Behavior Settings */
 "settings.auto_expand" = "Auto-expand on Task complete";
 "settings.suppress_focused" = "Suppress when focused";
+"settings.suppress_focused_desc" = "Suppress auto-expand when focused";
 "settings.auto_hide_idle" = "Auto-hide when idle";
 "settings.show_usage" = "Show usage data";
 "settings.global_shortcut" = "Global shortcut (⌘⇧I)";
+"settings.launch_at_login" = "Launch at login";
+
+/* Hook Settings */
+"settings.hooks.auto_repair" = "Auto-repair hooks";
+"settings.hooks.auto_repair_desc" = "Auto-repair hooks when removed";
+"settings.hooks.integrations" = "AI Tool Integrations";
+
+/* Sound Settings */
+"settings.sound.theme" = "Sound Theme";
+"settings.sound.theme_picker" = "Theme";
+"settings.sound.device" = "Audio Device";
+"settings.sound.device_desc" = "Sound output automatically follows your active audio device.";
+"settings.sound.notification" = "Notification Sound";
+
+/* Usage Settings */
+"settings.usage.title" = "API Usage Display";
+"settings.usage.show_desc" = "Show usage data in notch header";
+"settings.usage.detail" = "API usage and context window data are displayed as ring indicators when a session is active.";
+
+/* Diagnostics Settings */
+"settings.diagnostics.title" = "Diagnostic Log";
+"settings.diagnostics.desc" = "The diagnostic log captures hook, socket, and session events for troubleshooting.";
+"settings.diagnostics.copy" = "Copy Log to Clipboard";
+"settings.diagnostics.clear" = "Clear Log";
+"settings.app_info" = "App Info";
+
+/* Screen Settings */
+"settings.screen.label" = "Screen";
+"settings.screen.automatic" = "Automatic";
+"settings.screen.automatic_desc" = "Built-in or Main";
+"settings.screen.builtin" = "Built-in";
+"settings.screen.main" = "Main";
 
 /* Hook Status */
 "hooks.title" = "AI Tool Hooks";
@@ -34,15 +83,88 @@
 "update.failed" = "Update failed";
 "update.retry" = "Retry";
 
+/* Onboarding */
+"onboarding.welcome.title" = "Welcome to Claude Island";
+"onboarding.welcome.desc" = "Your AI coding sessions, right in the notch.\nMonitor progress, approve tools, and stay in flow.";
+"onboarding.welcome.button" = "Get Started";
+"onboarding.tools.title" = "Detected Tools";
+"onboarding.tools.desc" = "Select which AI tools to integrate with.";
+"onboarding.auto_repair" = "Auto-repair hooks";
+"onboarding.skip" = "Skip";
+"onboarding.continue" = "Continue";
+"onboarding.install_hooks %lld" = "Install %lld Hooks";
+"onboarding.install_hook_single" = "Install 1 Hook";
+"onboarding.complete.title" = "You're all set!";
+"onboarding.complete.button" = "Done";
+"onboarding.shortcut.toggle" = "Toggle Claude Island";
+"onboarding.shortcut.hover" = "Preview sessions in the notch";
+"onboarding.shortcut.click" = "Expand for full session view";
+
+/* HookSetup */
+"hookSetup.title" = "Hook Setup";
+"hookSetup.desc" = "Choose which AI tools to integrate with.\nHooks will only be installed for tools you select.";
+"hookSetup.auto_repair" = "Auto-repair hooks";
+"hookSetup.auto_repair_desc" = "Automatically reinstall if removed by other tools";
+"hookSetup.skip" = "Skip";
+"hookSetup.done" = "Done";
+"hookSetup.install %lld" = "Install %lld Hooks";
+"hookSetup.install_single" = "Install 1 Hook";
+"hookSetup.detected" = "Detected";
+"hookSetup.not_found" = "Not Found";
+
 /* Instances View */
 "instances.no_sessions" = "No active sessions";
 "instances.waiting_input" = "Waiting for input";
 "instances.processing" = "Processing";
 "instances.approval_needed" = "Approval needed";
+"instances.empty" = "No sessions";
+"instances.empty_desc" = "Run claude in terminal";
+"instances.needs_input" = "Needs your input";
+"instances.user_prefix" = "You:";
+"instances.go_to_terminal" = "Go to Terminal";
+"instances.approve" = "Allow";
+"instances.deny" = "Deny";
 
 /* Chat View */
 "chat.send" = "Send";
 "chat.placeholder" = "Type a message...";
+"chat.loading" = "Loading messages...";
+"chat.empty" = "No messages yet";
+"chat.input.placeholder" = "Message Claude...";
+"chat.input.disabled" = "Open Claude Code in tmux to enable messaging";
+"chat.processing" = "Processing";
+"chat.working" = "Working";
+"chat.interrupted" = "Interrupted";
+"chat.needs_input" = "Claude Code needs your input";
+"chat.approve" = "Allow";
+"chat.deny" = "Deny";
+"chat.terminal" = "Terminal";
+"chat.new_message" = "1 new message";
+"chat.new_messages %lld" = "%lld new messages";
+"chat.more_tool_uses %lld" = "+%lld more tool uses";
+"chat.subagent_tools %lld" = "Subagent used %lld tools:";
+
+/* Tool Results */
+"tool.user_modified" = "(User modified)";
+"tool.created" = "Created";
+"tool.wrote" = "Wrote";
+"tool.background_task %@" = "Background task: %@";
+"tool.stderr" = "stderr:";
+"tool.no_content" = "(No content)";
+"tool.no_matches" = "No matches found";
+"tool.file_count %lld" = "%lld files with matches";
+"tool.no_files" = "No files found";
+"tool.truncated" = "... and more (truncated)";
+"tool.no_results" = "No results found";
+"tool.more_results %lld" = "... and %lld more results";
+"tool.status %@" = "Status: %@";
+"tool.exit_code %lld" = "Exit: %lld";
+"tool.shell_terminated %@" = "Shell %@ terminated";
+"tool.completed" = "Completed";
+"tool.more_lines %lld" = "... (%lld more lines)";
+"tool.more_files %lld" = "... and %lld more files";
+"tool.more_hunks %lld" = "... and %lld more hunks";
+"tool.subagent_tools %lld" = "Subagent used %lld tools:";
 
 /* Usage */
 "usage.context" = "Context: %d%%";
