@@ -485,8 +485,9 @@ struct NotchView: View {
             if AppSettings.autoPopupOnApproval {
                 // Auto-popup mode: expand notch when new permission request arrives
                 // Use .manualOpen so it stays open until user acts (won't auto-collapse)
-                if viewModel.status == .closed &&
-                   !TerminalVisibilityDetector.isTerminalVisibleOnCurrentSpace() {
+                // Note: unlike task-complete auto-expand, approval popup ignores terminal
+                // visibility because the user MUST respond to continue
+                if viewModel.status == .closed {
                     viewModel.notchOpen(reason: .notification, presentationMode: .manualOpen)
                 }
             }
