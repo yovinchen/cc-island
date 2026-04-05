@@ -570,10 +570,15 @@ enum EventMapper {
     private static func extractMessage(from input: [String: Any]) -> String? {
         firstString(
             input["message"],
+            input["compact_summary"],
+            input["compactSummary"],
+            input["model"],
             nested(input, "details", "message"),
             nested(input, "details", "title"),
             nested(input, "details", "description")
-        ) ?? stringify(input["details"])
+        ) ?? stringify(input["selected_tools"]) ??
+            stringify(input["selectedTools"]) ??
+            stringify(input["details"])
     }
 
     private static func stringify(_ value: Any?) -> String? {
