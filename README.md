@@ -183,9 +183,9 @@ Claude Island App (NotchView)
 | 工具 | 配置文件 | 配置目录 | Hook 类型 | 注册事件数 | 权限超时 |
 |------|---------|---------|----------|-----------|---------|
 | **Claude Code** | `settings.json` | `~/.claude` | Bridge CLI (`command`) | 10 | 86400s (24h) |
-| **Codex CLI** | `hooks.json` | `~/.codex` | Python 脚本 (`bash`) | 10 | 86400s (24h) |
-| **Codex Desktop** | — | `~/.codex` | 文件监听（无需 Hook） | — | — |
-| **Gemini CLI** | `settings.json` | `~/.gemini` | Bridge CLI (`command`) | 6 | 30s |
+| **Codex CLI** | `hooks.json` + `config.toml` | `~/.codex` | Bridge CLI (`command`) + notify wrapper | 5 Hooks + 1 Notify | 30s |
+| **Codex Desktop** | — | `~/.codex` | `session_index.jsonl` + transcript 事件监听 | 3（合成事件） | — |
+| **Gemini CLI** | `settings.json` | `~/.gemini` / `.gemini` | Bridge CLI (`command`) | 8 | 30s |
 | **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 6 | 30s |
 | **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
 | **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
@@ -203,20 +203,23 @@ Claude Island App (NotchView)
 | Hook 事件 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
 |-----------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
 | SessionStart | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| SessionEnd | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| UserPromptSubmit | ✅ | ✅ | ❌ | ❌ | ✅¹ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅² | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PermissionRequest | ✅ | ✅ | ❌ | ❌ | ✅⁴ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Stop | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| SubagentStop | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Notification | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PreCompact | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| SessionEnd | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| UserPromptSubmit | ✅ | ✅ | 📁 | ✅¹ | ✅² | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅⁴ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PermissionRequest | ✅ | ❌ | ❌ | ❌ | ✅⁵ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Stop | ✅ | ✅ | 📁 | ✅⁶ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| SubagentStop | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Notification | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PreCompact | ✅ | ❌ | ❌ | ✅⁷ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-> ¹ Cursor `beforeSubmitPrompt` → `UserPromptSubmit`
-> ² Cursor `beforeReadFile` → `PreToolUse`
-> ³ Cursor `afterFileEdit` → `PostToolUse`
-> ⁴ Cursor `beforeShellExecution`/`beforeMCPExecution` → `PermissionRequest`
+> ¹ Gemini `BeforeAgent` → `UserPromptSubmit`
+> ² Cursor `beforeSubmitPrompt` → `UserPromptSubmit`
+> ³ Cursor `beforeReadFile` → `PreToolUse`
+> ⁴ Cursor `afterFileEdit` → `PostToolUse`
+> ⁵ Cursor `beforeShellExecution`/`beforeMCPExecution` → `PermissionRequest`
+> ⁶ Gemini `AfterAgent` → `Stop`
+> ⁷ Gemini `PreCompress` → `PreCompact`
 
 > ✅ = 支持　❌ = 不支持　📁 = 通过文件监听实现（非 Hook）　🚫 = 暂不支持（工具未提供 Hooks API）
 
@@ -228,13 +231,13 @@ Claude Island App (NotchView)
 |------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
 | 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | 工具执行追踪 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| 权限审批（Notch） | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 权限响应格式 | hookSpecificOutput | 通用 JSON | — | — | `{continue, permission}` | — | — | — | — | — | — |
+| 权限审批（Notch） | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 权限响应格式 | hookSpecificOutput | — | — | — | `{continue, permission}` | — | — | — | — | — | — |
 | Always Allow (acceptEdits) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
 | Bypass (bypassPermissions) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
 | 聊天记录解析 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 子代理追踪 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 上下文压缩通知 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 子代理追踪 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 上下文压缩通知 | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | StatusLine 集成 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 终端标题 (Ghostty) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | 终端跳转 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
@@ -250,26 +253,30 @@ Claude Island App (NotchView)
 - **权限响应**: 支持 `hookSpecificOutput` 格式，包含 `updatedPermissions`（`setMode`/`addRules`）
 - **特色**: 86400s 超时、StatusLine 集成、`matcher` 通配符、PreCompact auto/manual 两种模式
 
-#### Codex CLI ✅ 完整支持
+#### Codex CLI ✅ 当前支持
 
-- **配置文件**: `~/.codex/hooks.json`
-- **格式**: Python 脚本注入，通过 `bash` 类型执行
-- **支持事件**: 与 Claude Code 相同的 10 个事件
-- **权限响应**: 通用 JSON 格式 `{"decision": "allow"}`
+- **官方文档**: [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks) / [developers.openai.com/codex/config-reference](https://developers.openai.com/codex/config-reference)
+- **配置文件**: `~/.codex/hooks.json` + `~/.codex/config.toml`
+- **格式**: `hooks.json` 使用官方嵌套 `{matcher?, hooks:[{type, command}]}` 结构；`config.toml` 里需要 `[features] codex_hooks = true`
+- **支持事件**: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`
+- **附加通知**: 通过 `notify` wrapper 将 turn-complete 通知桥接到 Claude Island，并串联保留用户原有 notify 命令
+- **注意**: 当前官方 Codex Hooks 不提供独立 `PermissionRequest` / `SessionEnd` / `PreCompact` / `SubagentStop` 事件；`PreToolUse`/`PostToolUse` 目前主要覆盖 `Bash`
 
-#### Codex Desktop ✅ 文件监听
+#### Codex Desktop ✅ transcript 事件监听
 
-- **无需 Hook 配置**: 通过监听 `~/.codex/session_index.jsonl` 文件变化检测会话状态
-- **自动生成**: SessionStart/SessionEnd 事件
+- **无需 Hook 配置**: 通过监听 `~/.codex/session_index.jsonl` 和对应 transcript JSONL 检测会话状态
+- **真实数据源**: `session_index.jsonl` 当前使用 `id` / `thread_name` / `updated_at`，项目路径从 transcript 的 `session_meta.payload.cwd` 补回
+- **自动生成**: `SessionStart` / `UserPromptSubmit` / `Stop`
+- **事件映射**: transcript 中的 `event_msg.user_message` / `task_started` / `task_complete` 会被转换成 Claude Island 的统一 `HookEvent`
 
 #### Gemini CLI ✅ 支持
 
 - **官方文档**: [geminicli.com/docs/hooks](https://geminicli.com/docs/hooks/)
-- **配置文件**: `~/.gemini/settings.json`
-- **格式**: JSON，与 Claude Code 格式基本一致（`hooks` → 事件名 → `matcher` + `hooks` 数组）
-- **原生事件名**: BeforeTool, AfterTool, SessionStart, SessionEnd, Notification, PreCompress, BeforeAgent, AfterAgent, BeforeModel, AfterModel
-- **Claude Island 映射**: `sessionStart` → SessionStart, `preToolUse` → BeforeTool, `postToolUse` → AfterTool, `stop` → SessionEnd, `notification` → Notification
-- **注意**: Gemini CLI 不支持 PermissionRequest 事件，权限审批无法通过 Notch 进行
+- **配置文件**: `~/.gemini/settings.json`（用户级）或 `.gemini/settings.json`（项目级，优先级更高）
+- **格式**: JSON，嵌套 `{matcher?, hooks:[{type, command}]}` 结构，与 Claude Code 类似但事件模型不同
+- **原生事件名**: `SessionStart`, `BeforeAgent`, `BeforeTool`, `AfterTool`, `AfterAgent`, `Notification`, `PreCompress`, `SessionEnd`, `BeforeModel`, `BeforeToolSelection`, `AfterModel`
+- **Claude Island 映射**: `SessionStart`→`SessionStart`, `BeforeAgent`→`UserPromptSubmit`, `BeforeTool`→`PreToolUse`, `AfterTool`→`PostToolUse`, `AfterAgent`→`Stop`, `PreCompress`→`PreCompact`, `SessionEnd`→`SessionEnd`
+- **注意**: Gemini CLI 不支持独立 `PermissionRequest`；`Notification` 只能观测权限提示，无法通过 Notch 直接审批
 
 #### Cursor ✅ 支持（6 事件）
 
