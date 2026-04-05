@@ -43,6 +43,5 @@ releases/
 *.xcodeproj.backup/
 CLAUDE.md
 
-# Documentation and DMG files (not tracked)
-docs/
+# DMG files (not tracked)
 dmg/
