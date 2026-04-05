@@ -542,17 +542,23 @@ class HookSocketServer {
         eventHandler?(event)
     }
 
+    /// Sources that use Claude Code-compatible hookSpecificOutput response format.
+    /// These CLIs accept the same { hookSpecificOutput: { decision: { behavior, updatedPermissions } } } structure.
+    private static let hookSpecificOutputSources: Set<SessionSource> = [
+        .claude, .codebuddy, .qoder, .droid
+    ]
+
     /// Build response JSON data based on source type
     private func buildResponseData(decision: String, reason: String?, alwaysAllow: Bool, allowAll: Bool, autoApprove: Bool, toolName: String?, source: SessionSource) -> Data? {
-        if source == .claude {
-            return buildClaudeResponse(decision: decision, reason: reason, alwaysAllow: alwaysAllow, allowAll: allowAll, autoApprove: autoApprove, toolName: toolName)
+        if Self.hookSpecificOutputSources.contains(source) {
+            return buildHookSpecificOutputResponse(decision: decision, reason: reason, alwaysAllow: alwaysAllow, allowAll: allowAll, autoApprove: autoApprove, toolName: toolName)
         } else {
             let response = HookResponse(decision: decision, reason: reason)
             return try? JSONEncoder().encode(response)
         }
     }
 
-    /// Build hookSpecificOutput format for Claude Code
+    /// Build hookSpecificOutput format for Claude Code-compatible CLIs
     /// See: https://code.claude.com/docs/en/hooks
     ///
     /// Correct format:
@@ -574,7 +580,7 @@ class HookSocketServer {
     ///     }
     ///   }
     /// }
-    private func buildClaudeResponse(decision: String, reason: String?, alwaysAllow: Bool, allowAll: Bool, autoApprove: Bool, toolName: String?) -> Data? {
+    private func buildHookSpecificOutputResponse(decision: String, reason: String?, alwaysAllow: Bool, allowAll: Bool, autoApprove: Bool, toolName: String?) -> Data? {
         var decisionDict: [String: Any] = [
             "behavior": decision == "allow" ? "allow" : "deny"
         ]

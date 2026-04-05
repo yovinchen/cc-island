@@ -1025,20 +1025,52 @@ struct CopilotHookSource: HookSource {
     }
 }
 
-// MARK: - Generic JSON Settings Hook Source (shared by Qoder, Droid, CodeBuddy, Trae)
+// MARK: - Claude-Compatible Settings Hook Source (shared by CodeBuddy, Qoder, Droid)
+//
+// These CLIs use the same settings.json format as Claude Code:
+//   PascalCase event names, nested { matcher?, hooks: [{ type, command, timeout? }] } structure.
+// Each source can customize which events to register.
 
 private struct GenericSettingsHookSource: HookSource {
+    /// Describes a single hook event to register.
+    struct EventConfig {
+        let name: String       // PascalCase event name, e.g. "PreToolUse"
+        let matcher: String?   // nil = no matcher, "*" = wildcard
+        let timeout: Int?      // nil = use CLI default
+
+        init(_ name: String, matcher: String? = nil, timeout: Int? = nil) {
+            self.name = name
+            self.matcher = matcher
+            self.timeout = timeout
+        }
+    }
+
     let sourceType: SessionSource
     let displayName: String
     let configPath: String
     private let sourceName: String
+    private let events: [EventConfig]
 
-    init(sourceType: SessionSource, displayName: String, configDir: String, sourceName: String) {
+    /// Standard event set for Claude Code-compatible CLIs.
+    static let defaultEvents: [EventConfig] = [
+        EventConfig("SessionStart"),
+        EventConfig("SessionEnd"),
+        EventConfig("PreToolUse", matcher: "*"),
+        EventConfig("PostToolUse", matcher: "*"),
+        EventConfig("UserPromptSubmit"),
+        EventConfig("Stop"),
+        EventConfig("Notification", matcher: "*"),
+        EventConfig("PreCompact"),
+    ]
+
+    init(sourceType: SessionSource, displayName: String, configDir: String,
+         sourceName: String, events: [EventConfig]? = nil) {
         self.sourceType = sourceType
         self.displayName = displayName
         self.configPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("\(configDir)/settings.json").path
         self.sourceName = sourceName
+        self.events = events ?? Self.defaultEvents
     }
 
     func install(bridgePath: String) throws {
@@ -1054,21 +1086,35 @@ private struct GenericSettingsHookSource: HookSource {
             json = existing
         }
 
+        // Use shell-safe launcher path (same as Claude Code)
+        let command = HookInstaller.hookCommandPath() + " --source \(sourceName)"
         var hooks = json["hooks"] as? [String: Any] ?? [:]
-        let command = "\(bridgePath) --source \(sourceName)"
-        let hookEntry: [String: Any] = ["type": "command", "command": command]
-
-        let events = ["sessionStart", "sessionEnd", "preToolUse", "postToolUse", "stop", "notification"]
 
         for event in events {
-            if var existing = hooks[event] as? [[String: Any]] {
-                let hasOur = existing.contains { ($0["command"] as? String)?.contains("claude-island") == true }
-                if !hasOur {
-                    existing.append(hookEntry)
-                    hooks[event] = existing
+            // Build hook command entry
+            var hookCmd: [String: Any] = ["type": "command", "command": command]
+            if let timeout = event.timeout {
+                hookCmd["timeout"] = timeout
+            }
+
+            // Build event entry: { matcher?, hooks: [hookCmd] }
+            var entry: [String: Any] = ["hooks": [hookCmd]]
+            if let matcher = event.matcher {
+                entry["matcher"] = matcher
+            }
+
+            if var existingEntries = hooks[event.name] as? [[String: Any]] {
+                // Remove old claude-island entries (stale paths, upgrades, etc.)
+                existingEntries.removeAll { e in
+                    if let entryHooks = e["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
                 }
+                existingEntries.append(entry)
+                hooks[event.name] = existingEntries
             } else {
-                hooks[event] = [hookEntry]
+                hooks[event.name] = [entry]
             }
         }
 
@@ -1087,7 +1133,13 @@ private struct GenericSettingsHookSource: HookSource {
 
         for (event, value) in hooks {
             if var entries = value as? [[String: Any]] {
-                entries.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
+                entries.removeAll { entry in
+                    // Check nested hooks array for claude-island commands
+                    if let entryHooks = entry["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
+                }
                 if entries.isEmpty { hooks.removeValue(forKey: event) } else { hooks[event] = entries }
             }
         }
@@ -1106,7 +1158,13 @@ private struct GenericSettingsHookSource: HookSource {
 
         return hooks.values.contains { value in
             if let entries = value as? [[String: Any]] {
-                return entries.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                return entries.contains { entry in
+                    // Check nested hooks array
+                    if let entryHooks = entry["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
+                }
             }
             return false
         }
@@ -1117,7 +1175,10 @@ private struct GenericSettingsHookSource: HookSource {
 
 struct QoderHookSource: HookSource {
     private let inner = GenericSettingsHookSource(
-        sourceType: .qoder, displayName: "Qoder", configDir: ".qoder", sourceName: "qoder"
+        sourceType: .qoder, displayName: "Qoder", configDir: ".qoder", sourceName: "qoder",
+        events: GenericSettingsHookSource.defaultEvents + [
+            .init("SubagentStop"),
+        ]
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
@@ -1131,7 +1192,10 @@ struct QoderHookSource: HookSource {
 
 struct DroidHookSource: HookSource {
     private let inner = GenericSettingsHookSource(
-        sourceType: .droid, displayName: "Droid", configDir: ".factory", sourceName: "droid"
+        sourceType: .droid, displayName: "Droid", configDir: ".factory", sourceName: "droid",
+        events: GenericSettingsHookSource.defaultEvents + [
+            .init("SubagentStop"),
+        ]
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
