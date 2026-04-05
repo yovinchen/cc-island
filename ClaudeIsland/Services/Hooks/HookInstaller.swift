@@ -132,6 +132,7 @@ struct HookInstaller {
     private static func installHelperScripts(to binDir: URL) {
         let helperScripts: [(resource: String, ext: String, dest: String)] = [
             ("claude-island-amp", "sh", "claude-island-amp"),
+            ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
         ]
 
