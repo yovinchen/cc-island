@@ -141,6 +141,20 @@ actor SessionStore {
         }
         session.lastActivity = Date()
 
+        // Store hook-level content fields for UI display
+        if let prompt = event.prompt {
+            session.hookPrompt = prompt
+        }
+        if let error = event.error {
+            session.hookError = error
+        } else if event.event == "PreToolUse" || event.event == "PostToolUse" || event.event == "UserPromptSubmit" {
+            // Clear error when a new successful tool/prompt event arrives
+            session.hookError = nil
+        }
+        if let lastMsg = event.lastAssistantMessage {
+            session.hookLastMessage = lastMsg
+        }
+
         if event.status == "ended" {
             sessions.removeValue(forKey: sessionId)
             cancelPendingSync(sessionId: sessionId)
@@ -288,6 +302,27 @@ actor SessionStore {
                     let sessionId = session.sessionId
                     await MainActor.run {
                         CodexDesktopApprovalWatcher.shared.clearNotification(sessionId: sessionId)
+                    }
+                }
+            }
+
+        case "PostToolUseFailure":
+            // Qoder-specific: tool execution failed
+            if let toolUseId = event.toolUseId {
+                session.toolTracker.completeTool(id: toolUseId, success: false)
+                for i in 0..<session.chatItems.count {
+                    if session.chatItems[i].id == toolUseId,
+                       case .toolCall(var tool) = session.chatItems[i].type {
+                        tool.status = .error
+                        if let errorMsg = event.error {
+                            tool.result = errorMsg
+                        }
+                        session.chatItems[i] = ChatHistoryItem(
+                            id: toolUseId,
+                            type: .toolCall(tool),
+                            timestamp: session.chatItems[i].timestamp
+                        )
+                        break
                     }
                 }
             }

@@ -58,6 +58,27 @@ enum EventMapper {
             payload["status"] = "waiting_for_approval"
         }
 
+        // Event-specific content fields (for UI display)
+        // UserPromptSubmit → user's prompt text
+        if let prompt = firstString(input["prompt"], input["text"]) {
+            payload["prompt"] = prompt
+        }
+
+        // PostToolUseFailure → error message (Qoder-specific)
+        if let error = firstString(input["error"], input["error_message"]) {
+            payload["error"] = error
+        }
+
+        // PostToolUse → tool response (brief, for status display)
+        if let toolResponse = input["tool_response"] as? String {
+            payload["tool_response"] = String(toolResponse.prefix(500))
+        }
+
+        // Stop → last assistant message
+        if let lastMsg = firstString(input["last_assistant_message"], input["lastAssistantMessage"]) {
+            payload["last_assistant_message"] = String(lastMsg.prefix(500))
+        }
+
         // Collect terminal environment variables for TTY/session correlation
         payload["_env"] = collectEnv()
 
@@ -122,6 +143,7 @@ enum EventMapper {
             "subagentstop": "SubagentStop",
             "notification": "Notification",
             "precompact": "PreCompact",
+            "posttoolusefailure": "PostToolUseFailure",
             "erroroccurred": "Notification",
         ]
 
@@ -134,7 +156,7 @@ enum EventMapper {
         switch event {
         case "PreToolUse":
             return "running_tool"
-        case "PostToolUse", "UserPromptSubmit":
+        case "PostToolUse", "PostToolUseFailure", "UserPromptSubmit":
             return "processing"
         case "PermissionRequest":
             return "waiting_for_approval"

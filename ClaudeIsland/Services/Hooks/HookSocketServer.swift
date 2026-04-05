@@ -30,6 +30,12 @@ struct HookEvent: Decodable, Sendable {
     let rateLimits: [String: AnyCodable]?
     let env: [String: String]?
 
+    // Event-specific content fields (extracted from hook stdin for UI display)
+    let prompt: String?                        // UserPromptSubmit: user's prompt text
+    let error: String?                         // PostToolUseFailure: error message
+    let toolResponse: String?                  // PostToolUse: tool execution result (truncated)
+    let lastAssistantMessage: String?          // Stop: last AI response (truncated)
+
     enum CodingKeys: String, CodingKey {
         case sessionId = "session_id"
         case source
@@ -40,7 +46,9 @@ struct HookEvent: Decodable, Sendable {
         case toolInput = "tool_input"
         case toolUseId = "tool_use_id"
         case notificationType = "notification_type"
-        case message
+        case message, prompt, error
+        case toolResponse = "tool_response"
+        case lastAssistantMessage = "last_assistant_message"
         case rateLimits = "rate_limits"
         case env = "_env"
     }
@@ -69,10 +77,14 @@ struct HookEvent: Decodable, Sendable {
         message = try container.decodeIfPresent(String.self, forKey: .message)
         rateLimits = try container.decodeIfPresent([String: AnyCodable].self, forKey: .rateLimits)
         env = try container.decodeIfPresent([String: String].self, forKey: .env)
+        prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
+        error = try container.decodeIfPresent(String.self, forKey: .error)
+        toolResponse = try container.decodeIfPresent(String.self, forKey: .toolResponse)
+        lastAssistantMessage = try container.decodeIfPresent(String.self, forKey: .lastAssistantMessage)
     }
 
     /// Create a copy with updated toolUseId
-    init(sessionId: String, source: SessionSource, cwd: String, event: String, status: String, pid: Int?, tty: String?, approvalChannel: ApprovalChannel, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?, rateLimits: [String: AnyCodable]? = nil, env: [String: String]? = nil) {
+    init(sessionId: String, source: SessionSource, cwd: String, event: String, status: String, pid: Int?, tty: String?, approvalChannel: ApprovalChannel, tool: String?, toolInput: [String: AnyCodable]?, toolUseId: String?, notificationType: String?, message: String?, rateLimits: [String: AnyCodable]? = nil, env: [String: String]? = nil, prompt: String? = nil, error: String? = nil, toolResponse: String? = nil, lastAssistantMessage: String? = nil) {
         self.sessionId = sessionId
         self.source = source
         self.cwd = cwd
@@ -88,6 +100,10 @@ struct HookEvent: Decodable, Sendable {
         self.message = message
         self.rateLimits = rateLimits
         self.env = env
+        self.prompt = prompt
+        self.error = error
+        self.toolResponse = toolResponse
+        self.lastAssistantMessage = lastAssistantMessage
     }
 
     nonisolated var sessionPhase: SessionPhase {

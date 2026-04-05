@@ -333,6 +333,7 @@ struct InstanceRow: View {
     @ViewBuilder
     private var activityRow: some View {
         if isWaitingForApproval, let toolName = session.pendingToolName {
+            // Approval state: show tool name and input
             HStack(spacing: 4) {
                 Text(MCPToolFormatter.formatToolName(toolName))
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
@@ -349,7 +350,19 @@ struct InstanceRow: View {
                         .lineLimit(1)
                 }
             }
+        } else if let error = session.hookError {
+            // Tool failure (e.g. Qoder PostToolUseFailure)
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 9))
+                    .foregroundColor(Color.red.opacity(0.8))
+                Text(error)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.red.opacity(0.7))
+                    .lineLimit(1)
+            }
         } else if let role = session.lastMessageRole {
+            // JSONL-parsed data available
             switch role {
             case "tool":
                 HStack(spacing: 4) {
@@ -384,6 +397,23 @@ struct InstanceRow: View {
                         .foregroundColor(.white.opacity(0.4))
                         .lineLimit(1)
                 }
+            }
+        } else if let hookMsg = session.hookLastMessage {
+            // Hook-level fallback: last AI message (from Stop event)
+            Text(hookMsg)
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.4))
+                .lineLimit(1)
+        } else if let prompt = session.hookPrompt {
+            // Hook-level fallback: user's latest prompt (from UserPromptSubmit)
+            HStack(spacing: 4) {
+                Text(String(localized: "instances.user_prefix"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.5))
+                Text(prompt)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.4))
+                    .lineLimit(1)
             }
         } else if let lastMsg = session.lastMessage {
             Text(lastMsg)

@@ -210,6 +210,17 @@ struct SessionState: Identifiable, Sendable {
     /// API usage and context window data for this session
     var usageData: UsageData
 
+    // MARK: - Hook-Level Content (real-time, from hook events)
+
+    /// Last user prompt (from UserPromptSubmit hook event)
+    var hookPrompt: String?
+
+    /// Last tool error (from PostToolUseFailure hook event, Qoder-specific)
+    var hookError: String?
+
+    /// Last assistant message (from Stop hook event)
+    var hookLastMessage: String?
+
     // MARK: - Timestamps
 
     var lastActivity: Date
