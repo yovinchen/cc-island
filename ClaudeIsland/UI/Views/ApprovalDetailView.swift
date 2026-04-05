@@ -113,8 +113,8 @@ struct ApprovalDetailView: View {
 
     private var sessionHeader: some View {
         HStack(spacing: 8) {
-            // Crab icon + session title
-            ClaudeCrabIcon(size: 14, animateLegs: true)
+            // Source icon + session title
+            SourceIcon(source: session.source, size: 14, animateLegs: true)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(session.displayTitle)

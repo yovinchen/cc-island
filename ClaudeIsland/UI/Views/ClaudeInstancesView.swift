@@ -144,7 +144,6 @@ struct InstanceRow: View {
     @State private var approvalShowTime: Date? = nil
     @State private var now = Date()
 
-    private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
     private let minApprovalDisplaySeconds: TimeInterval = 2.0
     private let timeTimer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -174,8 +173,8 @@ struct InstanceRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
-            // Claude crab icon with status overlay
-            crabWithStatus
+            // Source-specific icon with status overlay
+            iconWithStatus
                 .padding(.top, 2)
 
             // Main content area
@@ -241,14 +240,19 @@ struct InstanceRow: View {
         }
     }
 
-    // MARK: - Crab Icon with Status
+    // MARK: - Source Icon with Status
 
-    private var crabWithStatus: some View {
+    private var isIconDimmed: Bool {
+        session.phase == .idle || session.phase == .ended
+    }
+
+    private var iconWithStatus: some View {
         ZStack(alignment: .bottomTrailing) {
-            ClaudeCrabIcon(
+            SourceIcon(
+                source: session.source,
                 size: 14,
-                color: crabColor,
-                animateLegs: isActive
+                animateLegs: isActive,
+                dimmed: isIconDimmed
             )
 
             // Status overlay badge
@@ -258,26 +262,13 @@ struct InstanceRow: View {
         .frame(width: 22, height: 22)
     }
 
-    private var crabColor: Color {
-        switch session.phase {
-        case .processing, .compacting:
-            return claudeOrange
-        case .waitingForApproval:
-            return TerminalColors.amber
-        case .waitingForInput:
-            return TerminalColors.green
-        case .idle, .ended:
-            return Color.white.opacity(0.35)
-        }
-    }
-
     @ViewBuilder
     private var statusBadge: some View {
         switch session.phase {
         case .processing, .compacting:
             // Running: small spinning dot
             Circle()
-                .fill(claudeOrange)
+                .fill(TerminalColors.prompt)
                 .frame(width: 6, height: 6)
         case .waitingForApproval:
             // Needs approval: amber "?" badge
