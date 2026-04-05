@@ -183,7 +183,7 @@ Claude Island App (NotchView)
 | 工具 | 配置文件 | 配置目录 | Hook 类型 | 注册事件数 | 权限超时 |
 |------|---------|---------|----------|-----------|---------|
 | **Claude Code** | `settings.json` | `~/.claude` | Bridge CLI (`command`) | 10 | 86400s (24h) |
-| **Codex CLI** | `hooks.json` + `config.toml` | `~/.codex` | Bridge CLI (`command`) + notify wrapper | 5 Hooks + 1 Notify | 30s |
+| **Codex CLI** | `hooks.json` + `config.toml` | `~/.codex` | Bridge CLI (`command`) + Bridge CLI (`notify`) | 2 Hooks + 1 Notify | 30s |
 | **Codex Desktop** | — | `~/.codex` | `session_index.jsonl` + transcript 事件监听 | 3（合成事件） | — |
 | **Gemini CLI** | `settings.json` | `~/.gemini` / `.gemini` | Bridge CLI (`command`) | 8 | 30s |
 | **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 6 | 30s |
@@ -205,8 +205,8 @@ Claude Island App (NotchView)
 | SessionStart | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | SessionEnd | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | UserPromptSubmit | ✅ | ✅ | 📁 | ✅¹ | ✅² | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅⁴ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PreToolUse | ✅ | ❌ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PostToolUse | ✅ | ❌ | ❌ | ✅ | ✅⁴ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | PermissionRequest | ✅ | ❌ | ❌ | ❌ | ✅⁵ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Stop | ✅ | ✅ | 📁 | ✅⁶ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | SubagentStop | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -230,7 +230,7 @@ Claude Island App (NotchView)
 | 功能 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
 |------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
 | 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| 工具执行追踪 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| 工具执行追踪 | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | 权限审批（Notch） | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 权限响应格式 | hookSpecificOutput | — | — | — | `{continue, permission}` | — | — | — | — | — | — |
 | Always Allow (acceptEdits) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
@@ -258,9 +258,9 @@ Claude Island App (NotchView)
 - **官方文档**: [developers.openai.com/codex/hooks](https://developers.openai.com/codex/hooks) / [developers.openai.com/codex/config-reference](https://developers.openai.com/codex/config-reference)
 - **配置文件**: `~/.codex/hooks.json` + `~/.codex/config.toml`
 - **格式**: `hooks.json` 使用官方嵌套 `{matcher?, hooks:[{type, command}]}` 结构；`config.toml` 里需要 `[features] codex_hooks = true`
-- **支持事件**: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`
-- **附加通知**: 通过 `notify` wrapper 将 turn-complete 通知桥接到 Claude Island，并串联保留用户原有 notify 命令
-- **注意**: 当前官方 Codex Hooks 不提供独立 `PermissionRequest` / `SessionEnd` / `PreCompact` / `SubagentStop` 事件；`PreToolUse`/`PostToolUse` 目前主要覆盖 `Bash`
+- **支持事件**: `SessionStart`, `UserPromptSubmit`；完成态 `Stop` 通过 `notify` 转换
+- **附加通知**: 直接使用 bridge launcher 作为 `notify` 命令（写入绝对路径 + `--source codex_notify`），并异步串联保留用户原有 notify 命令
+- **注意**: 当前官方 Codex Hooks 不提供独立 `PermissionRequest` / `SessionEnd` / `PreCompact` / `SubagentStop` 事件；为避免 CLI 在探索阶段反复打印 hook 日志，默认不注册 `PreToolUse` / `PostToolUse`
 
 #### Codex Desktop ✅ transcript 事件监听
 
