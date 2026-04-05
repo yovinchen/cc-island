@@ -39,7 +39,7 @@ enum PermissionHandler {
 
     static func handle(client: SocketClient, data: Data, source: String) -> Int32 {
         if let responseData = client.sendAndReceive(data: data, timeout: 86400) {
-            FileHandle.standardOutput.write(responseData)
+            writeResponse(responseData, source: source)
             return exitCode(for: responseData, source: source)
         }
         return 0
@@ -63,11 +63,21 @@ enum PermissionHandler {
         }
 
         if let responseData = client.sendAndReceive(data: data, timeout: 120) {
-            FileHandle.standardOutput.write(responseData)
             let source = payload["source"] as? String ?? ""
+            writeResponse(responseData, source: source)
             return exitCode(for: responseData, source: source)
         }
         return 0
+    }
+
+    private static func writeResponse(_ responseData: Data, source: String) {
+        guard !responseData.isEmpty else { return }
+
+        if source == "windsurf" {
+            FileHandle.standardError.write(responseData)
+        } else {
+            FileHandle.standardOutput.write(responseData)
+        }
     }
 
     private static func exitCode(for responseData: Data, source: String) -> Int32 {

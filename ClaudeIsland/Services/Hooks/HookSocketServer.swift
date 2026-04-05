@@ -575,6 +575,8 @@ class HookSocketServer {
             return buildCursorResponse(decision: decision, alwaysAllow: alwaysAllow)
         } else if source == .copilot || source == .ampCLI {
             return buildCopilotResponse(decision: decision, reason: reason)
+        } else if source == .windsurf {
+            return buildBlockingMessageResponse(decision: decision, reason: reason)
         } else if source == .qoder || source == .codebuddy || source == .codexCLI || source == .kimiCLI {
             return buildPreToolUsePermissionResponse(decision: decision, reason: reason)
         } else {
@@ -612,6 +614,13 @@ class HookSocketServer {
             "permissionDecisionReason": reason ?? (decision == "allow" ? "Approved by user" : "Denied by user")
         ]
         return try? JSONSerialization.data(withJSONObject: response, options: [])
+    }
+
+    /// Build a plain blocking message payload for CLIs that only care about stderr + exit 2.
+    private func buildBlockingMessageResponse(decision: String, reason: String?) -> Data? {
+        guard decision != "allow" else { return Data() }
+        let message = reason ?? "Denied by Claude Island"
+        return message.data(using: .utf8)
     }
 
     /// Build Qoder/CodeBuddy PreToolUse permission response format.
