@@ -189,7 +189,7 @@ Claude Island App (NotchView)
 | **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 5 | 30s |
 | **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
 | **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
-| **Droid** | `settings.json` | `~/.droid` | Bridge CLI (`command`) | 6 | 默认 |
+| **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 6 | 默认 |
 | **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 6 | 默认 |
 | **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 6 | 默认 |
 | **Trae** | — | `~/.trae` | — | — | — |
@@ -296,19 +296,20 @@ Claude Island App (NotchView)
 #### Droid (Factory) ✅ 支持
 
 - **官方文档**: [docs.factory.ai/cli/configuration/hooks-guide](https://docs.factory.ai/cli/configuration/hooks-guide)
-- **配置文件**: `~/.factory/settings.json`（注意：实际路径是 `.factory` 而非 `.droid`）
+- **配置文件**: `~/.factory/settings.json`
 - **格式**: JSON，与 Claude Code 格式兼容（`hooks` → 事件名 → `matcher` + 命令）
 - **原生事件名**: PreToolUse, PostToolUse, SessionEnd, UserPromptSubmit, Notification, Stop, SubagentStop
 - **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `stop`, `notification`
 - **注意**: Droid 支持 `exit code 2` 阻塞模式，可通过 hook 返回值阻止工具执行
 
-#### Qoder 🔍 待验证
+#### Qoder ✅ 支持
 
-- **官方文档**: [docs.qoder.com](https://docs.qoder.com/)
-- **配置文件**: `~/.qoder/settings.json`（假设）
-- **状态**: Qoder CLI 由阿里巴巴开发，官方文档未明确提及 hooks API。当前使用 GenericSettingsHookSource 写入 Claude Code 格式配置
-- **扩展方式**: Qoder 主要通过 MCP（Model Context Protocol）进行扩展
-- **风险**: 配置写入可能不被 Qoder 识别，实际效果待验证
+- **官方文档**: [docs.qoder.com/cli/hooks](https://docs.qoder.com/cli/hooks)
+- **配置文件**: `~/.qoder/settings.json`（用户级）、`${project}/.qoder/settings.json`（项目级）
+- **格式**: JSON，与 Claude Code 格式兼容（`hooks` → 事件名 → `matcher` + 命令）
+- **原生事件名**: PreToolUse, PostToolUse, SessionStart, SessionEnd, UserPromptSubmit, Notification, Stop, SubagentStop
+- **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `stop`, `notification`
+- **注意**: 修改配置后需重启 Qoder CLI 生效（不支持热重载）
 
 #### CodeBuddy ✅ 支持
 
