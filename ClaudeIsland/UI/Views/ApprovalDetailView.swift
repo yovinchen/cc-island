@@ -19,6 +19,13 @@ struct ApprovalDetailView: View {
     private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
     private let approvalBlue = Color(red: 0.25, green: 0.48, blue: 0.85)
     private let approvalRed = Color(red: 0.82, green: 0.25, blue: 0.25)
+    private let commandPreviewLineLimit = 3
+    private let messagePreviewLineLimit = 3
+    private let choicePreviewLineLimit = 2
+    private let detailPreviewLineLimit = 2
+    private let maxVisibleToolRows = 3
+    private let maxCodePreviewLines = 6
+    private let contentAreaMaxHeight: CGFloat = 250
 
     private var permission: PermissionContext? {
         session.activePermission
@@ -34,21 +41,11 @@ struct ApprovalDetailView: View {
 
                 Spacer().frame(height: 12)
 
-                // Tool warning + command card
-                toolCard(permission: permission)
-                    .padding(.horizontal, 16)
+                contentArea(permission: permission)
                     .opacity(showContent ? 1 : 0)
                     .offset(y: showContent ? 0 : 8)
 
-                if permission.isTerminalSelection {
-                    terminalChoiceCard(permission: permission)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                        .opacity(showContent ? 1 : 0)
-                        .offset(y: showContent ? 0 : 8)
-                }
-
-                Spacer()
+                Spacer(minLength: 12)
 
                 (permission.isTerminalSelection ? AnyView(terminalSelectionButtons) : AnyView(approvalButtons))
                     .padding(.horizontal, 16)
@@ -95,6 +92,21 @@ struct ApprovalDetailView: View {
                 }
             }
         }
+    }
+
+    private func contentArea(permission: PermissionContext) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 12) {
+                toolCard(permission: permission)
+
+                if permission.isTerminalSelection {
+                    terminalChoiceCard(permission: permission)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 1)
+        }
+        .frame(maxHeight: contentAreaMaxHeight, alignment: .top)
     }
 
     // MARK: - Session Header (matching screenshot: project · title, badges on right)
@@ -148,7 +160,11 @@ struct ApprovalDetailView: View {
     // MARK: - Tool Card (warning icon + command block + description)
 
     private func toolCard(permission: PermissionContext) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let sortedKeys = Array((permission.toolInput ?? [:]).keys.sorted().filter { $0 != "command" && $0 != "description" })
+        let visibleKeys = Array(sortedKeys.prefix(maxVisibleToolRows))
+        let hiddenKeyCount = max(0, sortedKeys.count - visibleKeys.count)
+
+        return VStack(alignment: .leading, spacing: 10) {
             // Warning triangle + tool name
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -174,11 +190,16 @@ struct ApprovalDetailView: View {
                             .font(.system(size: 12))
                             .foregroundColor(.white.opacity(0.5))
                             .padding(.top, 2)
+                            .lineLimit(detailPreviewLineLimit)
                     }
 
                     // Show other keys (file_path, etc.) excluding command/description
-                    ForEach(Array(input.keys.sorted().filter { $0 != "command" && $0 != "description" }), id: \.self) { key in
+                    ForEach(visibleKeys, id: \.self) { key in
                         toolInputRow(key: key, value: input[key]!)
+                    }
+
+                    if hiddenKeyCount > 0 {
+                        compactSummaryLabel("+\(hiddenKeyCount) more fields")
                     }
                 }
             }
@@ -205,11 +226,14 @@ struct ApprovalDetailView: View {
                 Text(message)
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(messagePreviewLineLimit)
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(permission.choices, id: \.index) { choice in
+                let visibleChoices = Array(permission.choices.prefix(4))
+                let hiddenChoiceCount = max(0, permission.choices.count - visibleChoices.count)
+
+                ForEach(visibleChoices, id: \.index) { choice in
                     HStack(alignment: .top, spacing: 8) {
                         Text("\(choice.index).")
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
@@ -219,8 +243,12 @@ struct ApprovalDetailView: View {
                         Text(choice.label)
                             .font(.system(size: 12))
                             .foregroundColor(.white.opacity(0.75))
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(choicePreviewLineLimit)
                     }
+                }
+
+                if hiddenChoiceCount > 0 {
+                    compactSummaryLabel("+\(hiddenChoiceCount) more choices")
                 }
             }
             .padding(10)
@@ -232,7 +260,7 @@ struct ApprovalDetailView: View {
             Text("Gemini requires the final choice in the terminal. Claude Island is mirroring the available options here.")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.35))
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(detailPreviewLineLimit)
         }
         .padding(14)
         .background(
@@ -252,8 +280,7 @@ struct ApprovalDetailView: View {
             Text(command)
                 .font(.system(size: 12, design: .monospaced))
                 .foregroundColor(.white.opacity(0.75))
-                .lineLimit(5)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(commandPreviewLineLimit)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -276,15 +303,15 @@ struct ApprovalDetailView: View {
                 Text(stringValue)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundColor(.white.opacity(0.7))
-                    .lineLimit(3)
+                    .lineLimit(detailPreviewLineLimit)
             }
         }
     }
 
     private func codePreview(_ content: String) -> some View {
         let lines = content.components(separatedBy: "\n")
-        let displayLines = Array(lines.prefix(15))
-        let hasMore = lines.count > 15
+        let displayLines = Array(lines.prefix(maxCodePreviewLines))
+        let hasMore = lines.count > maxCodePreviewLines
 
         return VStack(alignment: .leading, spacing: 0) {
             ForEach(Array(displayLines.enumerated()), id: \.offset) { idx, line in
@@ -302,7 +329,7 @@ struct ApprovalDetailView: View {
             }
 
             if hasMore {
-                Text(String(format: String(localized: "tool.more_lines %lld"), lines.count - 15))
+                Text(String(format: String(localized: "tool.more_lines %lld"), Int64(lines.count - maxCodePreviewLines)))
                     .font(.system(size: 9))
                     .foregroundColor(.white.opacity(0.3))
                     .padding(.top, 4)
@@ -314,6 +341,13 @@ struct ApprovalDetailView: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color.black.opacity(0.3))
         )
+    }
+
+    private func compactSummaryLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(.white.opacity(0.35))
+            .padding(.top, 2)
     }
 
     // MARK: - Approval Buttons (4 equal-width, colored per screenshot)
