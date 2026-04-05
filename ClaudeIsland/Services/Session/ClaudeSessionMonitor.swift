@@ -102,11 +102,11 @@ class ClaudeSessionMonitor: ObservableObject {
                 return
             }
 
+            // "始终允许" = setMode acceptEdits (auto-accept file edits)
             HookSocketServer.shared.respondToPermission(
                 toolUseId: permission.toolUseId,
                 decision: "allow",
-                alwaysAllow: true,
-                toolName: permission.toolName,
+                allowAll: true,
                 source: session.source
             )
 
