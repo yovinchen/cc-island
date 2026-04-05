@@ -158,6 +158,8 @@ hdiutil create -volname "ClaudeIsland" \
 echo '{"type":"session_start","session_id":"test"}' | socat - UNIX-CONNECT:/tmp/claude-island.sock
 ```
 
+更多 macOS 系统集成、helper 路径和本地发布注意事项见 [docs/macos-integration-guide.md](docs/macos-integration-guide.md)。
+
 ---
 
 ## Hook 注入系统
