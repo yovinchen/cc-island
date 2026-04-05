@@ -545,10 +545,10 @@ class HookSocketServer {
     /// Sources that use Claude Code-compatible hookSpecificOutput response format for PermissionRequest.
     /// These CLIs have a dedicated PermissionRequest event and accept
     /// { hookSpecificOutput: { decision: { behavior, updatedPermissions } } } structure.
-    /// Note: CodeBuddy handles permissions via PreToolUse's `permissionDecision` field instead,
-    /// so it uses the generic response format here.
+    /// Note: CodeBuddy and Qoder handle permissions via PreToolUse's `permissionDecision` field,
+    /// so they use the generic response format here.
     private static let hookSpecificOutputSources: Set<SessionSource> = [
-        .claude, .qoder, .droid
+        .claude, .droid
     ]
 
     /// Build response JSON data based on source type

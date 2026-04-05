@@ -190,7 +190,7 @@ Claude Island App (NotchView)
 | **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
 | **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
 | **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 9 | 默认 |
-| **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 9 | 默认 |
+| **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 5 | 默认 30s |
 | **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 7 | 默认 60s |
 | **Trae** | — | `~/.trae` | — | — | — |
 
@@ -304,12 +304,16 @@ Claude Island App (NotchView)
 
 #### Qoder ✅ 支持
 
-- **官方文档**: [docs.qoder.com/cli/hooks](https://docs.qoder.com/cli/hooks)
-- **配置文件**: `~/.qoder/settings.json`（用户级）、`${project}/.qoder/settings.json`（项目级）
-- **格式**: JSON，与 Claude Code 格式兼容（`hooks` → 事件名 → `matcher` + 命令）
-- **原生事件名**: PreToolUse, PostToolUse, SessionStart, SessionEnd, UserPromptSubmit, Notification, Stop, SubagentStop
-- **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `stop`, `notification`
-- **注意**: 修改配置后需重启 Qoder CLI 生效（不支持热重载）
+- **官方文档**: [docs.qoder.com/zh/extensions/hooks](https://docs.qoder.com/zh/extensions/hooks)
+- **配置文件**: `~/.qoder/settings.json`（全局）、`.qoder/settings.json`（项目级）、`.qoder/settings.local.json`（本地，gitignore）
+- **格式**: JSON，PascalCase 事件名、嵌套 `{matcher, hooks}` 结构
+- **注册事件**: UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop（仅 5 个）
+- **独有事件**: `PostToolUseFailure` — 工具执行失败时触发（含 `error` 字段）
+- **不支持的事件**: SessionStart, SessionEnd, Notification, PreCompact, SubagentStop, PermissionRequest
+- **权限处理**: 通过 PreToolUse 的 `permissionDecision` 字段（allow/deny/ask），无独立 PermissionRequest 事件
+- **超时**: 默认 30s，自定义超时待下个版本支持
+- **工具名映射**: 支持 Qoder 原生名和 Claude Code 兼容名（如 `run_in_terminal` ↔ `Bash`）
+- **注意**: 修改配置后需重启 IDE 生效（不支持热重载）；exit code 2 可阻止 PreToolUse/UserPromptSubmit 执行
 
 #### CodeBuddy ✅ 完整支持
 

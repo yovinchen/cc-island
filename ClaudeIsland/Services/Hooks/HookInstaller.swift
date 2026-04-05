@@ -1174,11 +1174,21 @@ private struct GenericSettingsHookSource: HookSource {
 // MARK: - Qoder Hook Source
 
 struct QoderHookSource: HookSource {
+    /// Qoder supports only 5 events (no SessionStart/End, Notification, PreCompact, SubagentStop).
+    /// Includes PostToolUseFailure which is unique to Qoder.
+    /// Permissions handled via PreToolUse's `permissionDecision`, no PermissionRequest event.
+    /// See: https://docs.qoder.com/zh/extensions/hooks
+    private static let qoderEvents: [GenericSettingsHookSource.EventConfig] = [
+        .init("UserPromptSubmit"),
+        .init("PreToolUse", matcher: "*"),
+        .init("PostToolUse", matcher: "*"),
+        .init("PostToolUseFailure", matcher: "*"),
+        .init("Stop"),
+    ]
+
     private let inner = GenericSettingsHookSource(
-        sourceType: .qoder, displayName: "Qoder", configDir: ".qoder", sourceName: "qoder",
-        events: GenericSettingsHookSource.defaultEvents + [
-            .init("SubagentStop"),
-        ]
+        sourceType: .qoder, displayName: "Qoder", configDir: ".qoder",
+        sourceName: "qoder", events: qoderEvents
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
