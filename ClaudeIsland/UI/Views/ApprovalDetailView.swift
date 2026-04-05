@@ -258,7 +258,7 @@ struct ApprovalDetailView: View {
             Divider()
                 .background(Color.white.opacity(0.1))
 
-            // Row 1: Deny + Allow Once + Always Allow
+            // 4 equal-width buttons
             HStack(spacing: 6) {
                 Button {
                     sessionMonitor.denyPermission(sessionId: session.sessionId, reason: nil)
@@ -267,7 +267,7 @@ struct ApprovalDetailView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 10)
                         .background(Color.white.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
@@ -280,7 +280,7 @@ struct ApprovalDetailView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 10)
                         .background(Color.white.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
@@ -293,24 +293,8 @@ struct ApprovalDetailView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 10)
                         .background(Color.white.opacity(0.25))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Row 2: Allow All + Bypass
-            HStack(spacing: 6) {
-                Button {
-                    sessionMonitor.allowAllPermission(sessionId: session.sessionId)
-                } label: {
-                    Text(String(localized: "instances.allow_all"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(Color.white.opacity(0.35))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
@@ -322,7 +306,7 @@ struct ApprovalDetailView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                        .padding(.vertical, 10)
                         .background(Color.white.opacity(0.9))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }

@@ -76,7 +76,6 @@ struct ClaudeInstancesView: View {
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
                         onAlwaysAllow: { alwaysAllowSession(session) },
-                        onAllowAll: { allowAllSession(session) },
                         onAutoApprove: { autoApproveSession(session) },
                         onReject: { rejectSession(session) },
                         onShowApprovalDetail: { showApprovalDetail(session) }
@@ -109,10 +108,6 @@ struct ClaudeInstancesView: View {
         sessionMonitor.alwaysAllowPermission(sessionId: session.sessionId)
     }
 
-    private func allowAllSession(_ session: SessionState) {
-        sessionMonitor.allowAllPermission(sessionId: session.sessionId)
-    }
-
     private func autoApproveSession(_ session: SessionState) {
         sessionMonitor.autoApprovePermission(sessionId: session.sessionId)
     }
@@ -141,7 +136,6 @@ struct InstanceRow: View {
     let onArchive: () -> Void
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
-    let onAllowAll: () -> Void
     let onAutoApprove: () -> Void
     let onReject: () -> Void
     let onShowApprovalDetail: () -> Void
@@ -300,7 +294,6 @@ struct InstanceRow: View {
                 InlineApprovalButtons(
                     onApprove: onApprove,
                     onAlwaysAllow: onAlwaysAllow,
-                    onAllowAll: onAllowAll,
                     onAutoApprove: onAutoApprove,
                     onReject: onReject
                 )
@@ -410,12 +403,11 @@ struct InstanceRow: View {
 
 // MARK: - Inline Approval Buttons
 
-/// Compact inline approval buttons with staggered animation
-/// Five-tier matching Vibe Island: Deny / Allow Once / Always Allow / Allow All / Bypass
+/// Compact inline approval buttons — 4 equal-width capsules
+/// Deny / Allow Once / Always Allow / Bypass
 struct InlineApprovalButtons: View {
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
-    let onAllowAll: () -> Void
     let onAutoApprove: () -> Void
     let onReject: () -> Void
 
@@ -423,35 +415,21 @@ struct InlineApprovalButtons: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            // Deny
             ApprovalCapsuleButton(
                 label: String(localized: "instances.deny"),
                 style: .deny,
                 action: onReject
             )
-
-            // Allow Once
             ApprovalCapsuleButton(
                 label: String(localized: "instances.allow_once"),
                 style: .allowOnce,
                 action: onApprove
             )
-
-            // Always Allow (tool-specific addRules)
             ApprovalCapsuleButton(
                 label: String(localized: "instances.always_allow"),
                 style: .alwaysAllow,
                 action: onAlwaysAllow
             )
-
-            // Allow All (acceptEdits mode)
-            ApprovalCapsuleButton(
-                label: String(localized: "instances.allow_all"),
-                style: .allowAll,
-                action: onAllowAll
-            )
-
-            // Bypass (bypassPermissions mode - most prominent)
             ApprovalCapsuleButton(
                 label: String(localized: "instances.auto_approve"),
                 style: .bypass,
@@ -471,14 +449,13 @@ struct InlineApprovalButtons: View {
 // MARK: - Approval Capsule Button
 
 enum ApprovalButtonStyle {
-    case deny, allowOnce, alwaysAllow, allowAll, bypass
+    case deny, allowOnce, alwaysAllow, bypass
 
     var foregroundColor: Color {
         switch self {
         case .deny: return .white.opacity(0.6)
         case .allowOnce: return .white.opacity(0.9)
         case .alwaysAllow: return .white
-        case .allowAll: return .white
         case .bypass: return .black
         }
     }
@@ -488,7 +465,6 @@ enum ApprovalButtonStyle {
         case .deny: return Color.white.opacity(0.08)
         case .allowOnce: return Color.white.opacity(0.15)
         case .alwaysAllow: return Color.white.opacity(0.25)
-        case .allowAll: return Color.white.opacity(0.4)
         case .bypass: return Color.white.opacity(0.9)
         }
     }
@@ -506,8 +482,8 @@ struct ApprovalCapsuleButton: View {
             Text(label)
                 .font(.system(size: 9, weight: .medium))
                 .foregroundColor(style.foregroundColor)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 5)
                 .background(style.backgroundColor)
                 .clipShape(Capsule())
         }
