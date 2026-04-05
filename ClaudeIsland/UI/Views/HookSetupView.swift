@@ -269,9 +269,9 @@ struct ToolSetupRow: View {
     private func configDescription(for source: SessionSource) -> String {
         switch source {
         case .claude: return "~/.claude/settings.json"
-        case .codexCLI: return "~/.codex/hooks.json"
-        case .gemini: return "~/.gemini/settings.json"
-        case .cursor: return "~/.cursor/hooks.json"
+        case .codexCLI: return "~/.codex/hooks.json + ~/.codex/config.toml"
+        case .gemini: return "~/.gemini/settings.json or .gemini/settings.json"
+        case .cursor: return "~/.cursor/hooks.json or .cursor/hooks.json"
         case .opencode: return "~/.config/opencode/plugins/"
         case .copilot: return "~/.copilot/config.json"
         case .qoder: return "~/.qoder/settings.json"

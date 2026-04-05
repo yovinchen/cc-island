@@ -61,6 +61,10 @@ struct ChatView: View {
         return session.phase.approvalToolName
     }
 
+    private var approvalPermission: PermissionContext? {
+        session.activePermission
+    }
+
     
     var body: some View {
         ZStack {
@@ -79,7 +83,13 @@ struct ChatView: View {
 
                 // Approval bar, interactive prompt, or Input bar
                 if let tool = approvalTool {
-                    if tool == "AskUserQuestion" {
+                    if approvalPermission?.isTerminalSelection == true {
+                        terminalChoiceBar
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                removal: .opacity
+                            ))
+                    } else if tool == "AskUserQuestion" {
                         // Interactive tools - show prompt to answer in terminal
                         interactivePromptBar
                             .transition(.asymmetric(
@@ -169,7 +179,10 @@ struct ChatView: View {
                     keepApprovalVisible = false
                 } else if oldPhase.isWaitingForApproval {
                     // Leaving approval: start grace period if needed
-                    if let showTime = approvalShowTime {
+                    if oldPhase.approvalContext?.isTerminalSelection == true {
+                        keepApprovalVisible = false
+                        cachedApprovalTool = nil
+                    } else if let showTime = approvalShowTime {
                         let elapsed = Date().timeIntervalSince(showTime)
                         if elapsed < minApprovalDisplaySeconds {
                             keepApprovalVisible = true
@@ -469,6 +482,17 @@ struct ChatView: View {
     private var interactivePromptBar: some View {
         ChatInteractivePromptBar(
             isInTmux: session.isInTmux,
+            onGoToTerminal: { focusTerminal() }
+        )
+    }
+
+    private var terminalChoiceBar: some View {
+        ChatTerminalChoiceBar(
+            tool: approvalTool ?? "ToolPermission",
+            message: approvalPermission?.message,
+            choicesSummary: approvalPermission?.choicesSummary,
+            source: session.source,
+            terminalAppName: session.terminalAppName,
             onGoToTerminal: { focusTerminal() }
         )
     }
@@ -1079,6 +1103,95 @@ struct ChatInteractivePromptBar: View {
             .scaleEffect(showButton ? 1 : 0.8)
         }
         .frame(minHeight: 44)  // Consistent height with other bars
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.black.opacity(0.2))
+        .onAppear {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7).delay(0.05)) {
+                showContent = true
+            }
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7).delay(0.1)) {
+                showButton = true
+            }
+        }
+    }
+}
+
+struct ChatTerminalChoiceBar: View {
+    let tool: String
+    let message: String?
+    let choicesSummary: String?
+    let source: SessionSource
+    let terminalAppName: String?
+    let onGoToTerminal: () -> Void
+
+    @State private var showContent = false
+    @State private var showButton = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(MCPToolFormatter.formatToolName(tool))
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(TerminalColors.amber)
+
+                    Text(source.displayName)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Capsule())
+
+                    if let terminalAppName {
+                        Text(terminalAppName)
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.white.opacity(0.06))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                if let message {
+                    Text(message)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.55))
+                        .lineLimit(2)
+                } else if let choicesSummary {
+                    Text(choicesSummary)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.55))
+                        .lineLimit(2)
+                }
+            }
+            .opacity(showContent ? 1 : 0)
+            .offset(x: showContent ? 0 : -10)
+
+            Spacer()
+
+            Button {
+                onGoToTerminal()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 11, weight: .medium))
+                    Text(String(localized: "chat.terminal"))
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(.black)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.95))
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .opacity(showButton ? 1 : 0)
+            .scaleEffect(showButton ? 1 : 0.8)
+        }
+        .frame(minHeight: 44)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.black.opacity(0.2))

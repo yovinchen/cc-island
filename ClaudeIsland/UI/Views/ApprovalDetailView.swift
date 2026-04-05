@@ -3,7 +3,7 @@
 //  ClaudeIsland
 //
 //  Full-panel approval view matching Vibe Island style.
-//  Shows session header, tool command card, and 4 colored approval buttons.
+//  Shows session header, tool context, and either approval controls or Gemini terminal choices.
 //
 
 import SwiftUI
@@ -40,10 +40,17 @@ struct ApprovalDetailView: View {
                     .opacity(showContent ? 1 : 0)
                     .offset(y: showContent ? 0 : 8)
 
+                if permission.isTerminalSelection {
+                    terminalChoiceCard(permission: permission)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .opacity(showContent ? 1 : 0)
+                        .offset(y: showContent ? 0 : 8)
+                }
+
                 Spacer()
 
-                // 4 equal-width colored buttons at bottom
-                approvalButtons
+                (permission.isTerminalSelection ? AnyView(terminalSelectionButtons) : AnyView(approvalButtons))
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                     .opacity(showButtons ? 1 : 0)
@@ -175,6 +182,57 @@ struct ApprovalDetailView: View {
                     }
                 }
             }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
+    private func terminalChoiceCard(permission: PermissionContext) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "terminal.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(TerminalColors.amber)
+                Text("Choose in Gemini Terminal")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.9))
+            }
+
+            if let message = permission.message {
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(permission.choices, id: \.index) { choice in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("\(choice.index).")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                            .foregroundColor(TerminalColors.amber.opacity(0.9))
+                            .frame(width: 18, alignment: .trailing)
+
+                        Text(choice.label)
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.75))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(0.04))
+            )
+
+            Text("Gemini requires the final choice in the terminal. Claude Island is mirroring the available options here.")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.35))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .background(
@@ -320,7 +378,39 @@ struct ApprovalDetailView: View {
         }
     }
 
+    private var terminalSelectionButtons: some View {
+        VStack(spacing: 8) {
+            Button {
+                focusTerminal()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 13, weight: .medium))
+                    Text("Go To Terminal")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.95))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.plain)
+
+            Text("Selecting an option here would be misleading because Gemini only accepts the actual choice inside the terminal prompt.")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.35))
+                .multilineTextAlignment(.center)
+        }
+    }
+
     // MARK: - Helpers
+
+    private func focusTerminal() {
+        Task {
+            _ = await TerminalFocuser.shared.focusTerminal(session: session)
+        }
+    }
 
     private func toolIcon(for toolName: String) -> String {
         switch toolName.lowercased() {

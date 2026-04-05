@@ -151,6 +151,12 @@ actor SessionStore {
             // Clear error when a new successful tool/prompt event arrives
             session.hookError = nil
         }
+        if let message = event.message {
+            session.hookMessage = message
+        } else if event.event == "UserPromptSubmit" || event.event == "PreToolUse" || event.event == "PostToolUse" || event.event == "Stop" {
+            // Clear stale hook notifications once the session moves on to the next step
+            session.hookMessage = nil
+        }
         if let lastMsg = event.lastAssistantMessage {
             session.hookLastMessage = lastMsg
         }
@@ -170,7 +176,8 @@ actor SessionStore {
         // Other events (PostToolUse, Stop, etc.) must NOT overwrite the approval state,
         // as the user hasn't responded yet. The approval UI must persist until explicit action.
         let shouldBlockPhaseChange: Bool = {
-            guard case .waitingForApproval = session.phase else { return false }
+            guard case .waitingForApproval(let currentPermission) = session.phase else { return false }
+            guard currentPermission.blocksPhaseTransitions else { return false }
             // Allow new permission requests to override
             if case .waitingForApproval = newPhase { return false }
             // Allow compacting

@@ -72,6 +72,7 @@ struct ClaudeInstancesView: View {
                     InstanceRow(
                         session: session,
                         onTap: { focusAndCollapse(session) },
+                        onOpenTerminal: { focusAndCollapse(session) },
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
                         onAlwaysAllow: { alwaysAllowSession(session) },
@@ -129,6 +130,7 @@ struct ClaudeInstancesView: View {
 struct InstanceRow: View {
     let session: SessionState
     let onTap: () -> Void
+    let onOpenTerminal: () -> Void
     let onArchive: () -> Void
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
@@ -153,8 +155,16 @@ struct InstanceRow: View {
 
     /// Whether the pending tool requires interactive input (not just approve/deny)
     private var isInteractiveTool: Bool {
+        if session.activePermission?.isTerminalSelection == true {
+            return true
+        }
         guard let toolName = session.pendingToolName else { return false }
         return toolName == "AskUserQuestion"
+    }
+
+    private var showsApprovalDetail: Bool {
+        guard isWaitingForApproval else { return false }
+        return session.activePermission?.isTerminalSelection == true || !isInteractiveTool
     }
 
     /// Is the crab actively working (animated legs)
@@ -188,7 +198,7 @@ struct InstanceRow: View {
         .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture {
-            if isWaitingForApproval && !isInteractiveTool {
+            if showsApprovalDetail {
                 onShowApprovalDetail()
             } else {
                 onTap()
@@ -206,7 +216,9 @@ struct InstanceRow: View {
                 approvalShowTime = Date()
                 keepApprovalVisible = false
             } else if oldPhase.isWaitingForApproval {
-                if let showTime = approvalShowTime {
+                if oldPhase.approvalContext?.isTerminalSelection == true {
+                    keepApprovalVisible = false
+                } else if let showTime = approvalShowTime {
                     let elapsed = Date().timeIntervalSince(showTime)
                     if elapsed < minApprovalDisplaySeconds {
                         keepApprovalVisible = true
@@ -332,7 +344,29 @@ struct InstanceRow: View {
 
     @ViewBuilder
     private var activityRow: some View {
-        if isWaitingForApproval, let toolName = session.pendingToolName {
+        if let permission = session.activePermission, isWaitingForApproval, permission.isTerminalSelection {
+            HStack(spacing: 4) {
+                Text(MCPToolFormatter.formatToolName(permission.toolName))
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundColor(TerminalColors.amber.opacity(0.9))
+                if let message = permission.message {
+                    Text(message)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                } else if let choicesSummary = permission.choicesSummary {
+                    Text(choicesSummary)
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                } else {
+                    Text("Choose in Gemini terminal")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.5))
+                        .lineLimit(1)
+                }
+            }
+        } else if isWaitingForApproval, let toolName = session.pendingToolName {
             // Approval state: show tool name and input
             HStack(spacing: 4) {
                 Text(MCPToolFormatter.formatToolName(toolName))
@@ -404,6 +438,16 @@ struct InstanceRow: View {
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.4))
                 .lineLimit(1)
+        } else if let hookMessage = session.hookMessage {
+            HStack(spacing: 4) {
+                Image(systemName: "bell.badge")
+                    .font(.system(size: 9))
+                    .foregroundColor(TerminalColors.amber.opacity(0.8))
+                Text(hookMessage)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.4))
+                    .lineLimit(1)
+            }
         } else if let prompt = session.hookPrompt {
             // Hook-level fallback: user's latest prompt (from UserPromptSubmit)
             HStack(spacing: 4) {
@@ -427,7 +471,10 @@ struct InstanceRow: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        if isWaitingForApproval && !isInteractiveTool {
+        if let permission = session.activePermission, permission.isTerminalSelection {
+            IconButton(icon: "terminal") { onOpenTerminal() }
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        } else if isWaitingForApproval && !isInteractiveTool {
             InlineApprovalButtons(
                 onApprove: onApprove,
                 onAlwaysAllow: onAlwaysAllow,
@@ -577,4 +624,3 @@ struct IconButton: View {
         .onHover { isHovered = $0 }
     }
 }
-
