@@ -186,7 +186,7 @@ Claude Island App (NotchView)
 | **Codex CLI** | `hooks.json` | `~/.codex` | Python 脚本 (`bash`) | 10 | 86400s (24h) |
 | **Codex Desktop** | — | `~/.codex` | 文件监听（无需 Hook） | — | — |
 | **Gemini CLI** | `settings.json` | `~/.gemini` | Bridge CLI (`command`) | 6 | 30s |
-| **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 5 | 30s |
+| **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 6 | 30s |
 | **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
 | **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
 | **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 9 | 默认 |
@@ -202,16 +202,21 @@ Claude Island App (NotchView)
 
 | Hook 事件 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
 |-----------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
-| SessionStart | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| SessionEnd | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| UserPromptSubmit | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PermissionRequest | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| SessionStart | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| SessionEnd | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| UserPromptSubmit | ✅ | ✅ | ❌ | ❌ | ✅¹ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅² | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PermissionRequest | ✅ | ✅ | ❌ | ❌ | ✅⁴ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Stop | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | SubagentStop | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Notification | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | PreCompact | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+> ¹ Cursor `beforeSubmitPrompt` → `UserPromptSubmit`
+> ² Cursor `beforeReadFile` → `PreToolUse`
+> ³ Cursor `afterFileEdit` → `PostToolUse`
+> ⁴ Cursor `beforeShellExecution`/`beforeMCPExecution` → `PermissionRequest`
 
 > ✅ = 支持　❌ = 不支持　📁 = 通过文件监听实现（非 Hook）　🚫 = 暂不支持（工具未提供 Hooks API）
 
@@ -223,8 +228,8 @@ Claude Island App (NotchView)
 |------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
 | 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | 工具执行追踪 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| 权限审批（Notch） | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 权限响应格式 | hookSpecificOutput | 通用 JSON | — | — | — | — | — | — | — | — | — |
+| 权限审批（Notch） | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 权限响应格式 | hookSpecificOutput | 通用 JSON | — | — | `{continue, permission}` | — | — | — | — | — | — |
 | Always Allow (acceptEdits) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
 | Bypass (bypassPermissions) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
 | 聊天记录解析 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -266,14 +271,17 @@ Claude Island App (NotchView)
 - **Claude Island 映射**: `sessionStart` → SessionStart, `preToolUse` → BeforeTool, `postToolUse` → AfterTool, `stop` → SessionEnd, `notification` → Notification
 - **注意**: Gemini CLI 不支持 PermissionRequest 事件，权限审批无法通过 Notch 进行
 
-#### Cursor ✅ 支持
+#### Cursor ✅ 支持（6 事件）
 
 - **官方文档**: [cursor.com/docs/hooks](https://cursor.com/docs/hooks)
 - **配置文件**: `~/.cursor/hooks.json`（用户级）或 `.cursor/hooks.json`（项目级）
 - **格式**: JSON，`hooks` 对象下按事件名分组
-- **原生事件名**: beforeShellExecution, beforeMCPExecution, beforeReadFile, afterFileEdit, stop, beforeSubmitPrompt
-- **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `agentStop`
-- **注意**: Cursor hooks 是 beta 功能；不支持 PermissionRequest
+- **原生事件名**: `beforeSubmitPrompt`, `beforeShellExecution`, `beforeMCPExecution`, `beforeReadFile`, `afterFileEdit`, `stop`
+- **Claude Island 映射**: `beforeSubmitPrompt`→UserPromptSubmit, `beforeShellExecution`/`beforeMCPExecution`→PermissionRequest, `beforeReadFile`→PreToolUse, `afterFileEdit`→PostToolUse, `stop`→Stop
+- **配置格式**: `{"version": 1, "hooks": {"eventName": [{"command": "..."}]}}` — 扁平结构，无 matcher/hooks 嵌套
+- **响应格式**: `{"continue": true/false, "permission": "allow|deny|ask"}` — 与 Claude Code 完全不同
+- **权限审批**: ✅ 支持（通过 `beforeShellExecution`/`beforeMCPExecution` 的 continue/permission 响应）
+- **Gap 文档**: [Docs/cursor-hooks-gap.md](Docs/cursor-hooks-gap.md)
 
 #### OpenCode ✅ 支持
 
