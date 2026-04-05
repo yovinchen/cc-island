@@ -512,10 +512,7 @@ struct CodexHookSource: HookSource {
     /// Codex's current official hook surface.
     private static let events: [EventConfig] = [
         .init("SessionStart", matcher: "startup|resume"),
-        .init("UserPromptSubmit"),
-        .init("PreToolUse", matcher: "Bash"),
-        .init("PostToolUse", matcher: "Bash"),
-        .init("Stop")
+        .init("UserPromptSubmit")
     ]
 
     var sourceType: SessionSource { .codexCLI }
@@ -535,7 +532,12 @@ struct CodexHookSource: HookSource {
             .appendingPathComponent(".codex/config.toml")
     }
 
-    private var notifyScriptURL: URL {
+    private var launcherURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude-island/bin/claude-island-bridge-launcher.sh")
+    }
+
+    private var legacyNotifyScriptURL: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".codex/claude-island/codex-notify.py")
     }
@@ -554,7 +556,7 @@ struct CodexHookSource: HookSource {
             withIntermediateDirectories: true
         )
 
-        writeCodexNotifyScript(at: notifyScriptURL)
+        try? FileManager.default.removeItem(at: legacyNotifyScriptURL)
         updateCodexHooks(at: URL(fileURLWithPath: configPath), bridgePath: bridgePath)
         updateCodexConfig(at: codexConfigURL)
     }
@@ -583,14 +585,13 @@ struct CodexHookSource: HookSource {
 
         restoreCodexConfig(at: codexConfigURL)
 
-        try? FileManager.default.removeItem(at: notifyScriptURL)
+        try? FileManager.default.removeItem(at: legacyNotifyScriptURL)
         try? FileManager.default.removeItem(at: notifyChainURL)
     }
 
     func isInstalled() -> Bool {
         let hooksURL = URL(fileURLWithPath: configPath)
         guard FileManager.default.fileExists(atPath: hooksURL.path),
-              FileManager.default.fileExists(atPath: notifyScriptURL.path),
               let data = try? Data(contentsOf: hooksURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let hooks = json["hooks"] as? [String: Any] else {
@@ -610,45 +611,6 @@ struct CodexHookSource: HookSource {
 
         return isManagedNotifyCommand(notify)
     }
-
-    private func writeCodexNotifyScript(at url: URL) {
-        let launcherPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude-island/bin/claude-island-bridge-launcher.sh").path
-        let chainPath = notifyChainURL.path
-
-        let script = """
-        #!/usr/bin/env python3
-        import json, subprocess, sys
-        from pathlib import Path
-
-        BRIDGE = Path(r"\(launcherPath)")
-        CHAIN = Path(r"\(chainPath)")
-
-        payload = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
-        if not payload:
-            sys.exit(0)
-
-        try:
-            subprocess.run(
-                [str(BRIDGE), "--source", "codex_notify"],
-                input=payload.encode(),
-                check=False,
-            )
-        except Exception:
-            pass
-
-        if CHAIN.exists():
-            try:
-                command = json.loads(CHAIN.read_text(encoding="utf-8"))
-                if isinstance(command, list) and command:
-                    subprocess.run(command + [payload], check=False)
-            except Exception:
-                pass
-        """
-        try? script.write(to: url, atomically: true, encoding: .utf8)
-        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-    }
-
     private func updateCodexHooks(at hooksURL: URL, bridgePath: String) {
         var json: [String: Any] = [:]
         if let data = try? Data(contentsOf: hooksURL),
@@ -697,7 +659,11 @@ struct CodexHookSource: HookSource {
         }
 
         var updated = setBool(inSection: "features", key: "codex_hooks", value: true, in: current)
-        updated = setTopLevelArray(for: "notify", values: [notifyScriptURL.path], in: updated)
+        updated = setTopLevelArray(
+            for: "notify",
+            values: [launcherURL.path, "--source", "codex_notify"],
+            in: updated
+        )
 
         if !updated.hasSuffix("\n") {
             updated.append("\n")
@@ -761,7 +727,18 @@ struct CodexHookSource: HookSource {
     }
 
     private func isManagedNotifyCommand(_ command: [String]) -> Bool {
-        command.first == notifyScriptURL.path
+        guard let executable = command.first else { return false }
+
+        if executable == legacyNotifyScriptURL.path || executable.hasSuffix("/codex-notify.py") {
+            return true
+        }
+
+        let isBridgeLauncher = executable == launcherURL.path ||
+            executable.hasSuffix("/claude-island-bridge-launcher.sh")
+
+        return isBridgeLauncher &&
+            command.contains("--source") &&
+            command.contains("codex_notify")
     }
 
     private func extractTopLevelArray(for key: String, from content: String) -> [String]? {
