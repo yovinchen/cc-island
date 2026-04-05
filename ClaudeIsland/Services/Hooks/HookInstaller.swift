@@ -112,6 +112,7 @@ struct HookInstaller {
 
         // Install statusline script
         installStatusLineScript(to: binDir)
+        installHelperScripts(to: binDir)
     }
 
     /// Install the statusline script to ~/.claude-island/bin/
@@ -125,6 +126,25 @@ struct HookInstaller {
                 [.posixPermissions: 0o755],
                 ofItemAtPath: statuslineDest.path
             )
+        }
+    }
+
+    private static func installHelperScripts(to binDir: URL) {
+        let helperScripts: [(resource: String, ext: String, dest: String)] = [
+            ("claude-island-amp", "sh", "claude-island-amp"),
+            ("claude-island-kiro", "sh", "claude-island-kiro"),
+        ]
+
+        for helper in helperScripts {
+            let destination = binDir.appendingPathComponent(helper.dest)
+            if let bundled = Bundle.main.url(forResource: helper.resource, withExtension: helper.ext) {
+                try? FileManager.default.removeItem(at: destination)
+                try? FileManager.default.copyItem(at: bundled, to: destination)
+                try? FileManager.default.setAttributes(
+                    [.posixPermissions: 0o755],
+                    ofItemAtPath: destination.path
+                )
+            }
         }
     }
 
