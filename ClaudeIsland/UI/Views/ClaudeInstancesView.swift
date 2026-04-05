@@ -71,8 +71,7 @@ struct ClaudeInstancesView: View {
                 ForEach(sortedInstances) { session in
                     InstanceRow(
                         session: session,
-                        onFocus: { focusSession(session) },
-                        onChat: { openChat(session) },
+                        onTap: { focusAndCollapse(session) },
                         onArchive: { archiveSession(session) },
                         onApprove: { approveSession(session) },
                         onAlwaysAllow: { alwaysAllowSession(session) },
@@ -90,14 +89,12 @@ struct ClaudeInstancesView: View {
 
     // MARK: - Actions
 
-    private func focusSession(_ session: SessionState) {
+    /// Focus terminal and collapse notch
+    private func focusAndCollapse(_ session: SessionState) {
         Task {
             _ = await TerminalFocuser.shared.focusTerminal(session: session)
         }
-    }
-
-    private func openChat(_ session: SessionState) {
-        viewModel.showChat(for: session)
+        viewModel.notchClose()
     }
 
     private func approveSession(_ session: SessionState) {
@@ -131,8 +128,7 @@ struct ClaudeInstancesView: View {
 
 struct InstanceRow: View {
     let session: SessionState
-    let onFocus: () -> Void
-    let onChat: () -> Void
+    let onTap: () -> Void
     let onArchive: () -> Void
     let onApprove: () -> Void
     let onAlwaysAllow: () -> Void
@@ -141,7 +137,6 @@ struct InstanceRow: View {
     let onShowApprovalDetail: () -> Void
 
     @State private var isHovered = false
-    @State private var isYabaiAvailable = false
     /// Grace period flag: keeps approval UI visible for 2s after phase leaves waitingForApproval
     @State private var keepApprovalVisible = false
     @State private var approvalShowTime: Date? = nil
@@ -196,7 +191,7 @@ struct InstanceRow: View {
             if isWaitingForApproval && !isInteractiveTool {
                 onShowApprovalDetail()
             } else {
-                onChat()
+                onTap()
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isWaitingForApproval)
@@ -206,9 +201,6 @@ struct InstanceRow: View {
         )
         .onHover { isHovered = $0 }
         .onReceive(timeTimer) { _ in now = Date() }
-        .task {
-            isYabaiAvailable = await WindowFinder.shared.isYabaiAvailable()
-        }
         .onChange(of: session.phase) { oldPhase, newPhase in
             if newPhase.isWaitingForApproval {
                 approvalShowTime = Date()
@@ -405,17 +397,7 @@ struct InstanceRow: View {
 
     @ViewBuilder
     private var actionButtons: some View {
-        if isWaitingForApproval && isInteractiveTool {
-            HStack(spacing: 8) {
-                IconButton(icon: "bubble.left") { onChat() }
-                if session.canFocusTerminal {
-                    IconButton(icon: "eye") { onFocus() }
-                } else if isYabaiAvailable && session.isInTmux {
-                    IconButton(icon: "eye") { onFocus() }
-                }
-            }
-            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-        } else if isWaitingForApproval {
+        if isWaitingForApproval && !isInteractiveTool {
             InlineApprovalButtons(
                 onApprove: onApprove,
                 onAlwaysAllow: onAlwaysAllow,
@@ -424,16 +406,11 @@ struct InstanceRow: View {
             )
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
         } else {
-            HStack(spacing: 8) {
-                IconButton(icon: "bubble.left") { onChat() }
-                if session.canFocusTerminal || (session.isInTmux && isYabaiAvailable) {
-                    IconButton(icon: "eye") { onFocus() }
-                }
-                if session.phase == .idle || session.phase == .waitingForInput {
-                    IconButton(icon: "archivebox") { onArchive() }
-                }
+            // Archive button — only for idle or completed sessions
+            if session.phase == .idle || session.phase == .waitingForInput {
+                IconButton(icon: "xmark") { onArchive() }
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
-            .transition(.opacity.combined(with: .scale(scale: 0.9)))
         }
     }
 }
@@ -571,58 +548,3 @@ struct IconButton: View {
     }
 }
 
-// MARK: - Compact Terminal Button (inline in description)
-
-struct CompactTerminalButton: View {
-    let isEnabled: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button {
-            if isEnabled {
-                onTap()
-            }
-        } label: {
-            HStack(spacing: 2) {
-                Image(systemName: "terminal")
-                    .font(.system(size: 8, weight: .medium))
-                Text(String(localized: "instances.go_to_terminal"))
-                    .font(.system(size: 10, weight: .medium))
-            }
-            .foregroundColor(isEnabled ? .white.opacity(0.9) : .white.opacity(0.3))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(isEnabled ? Color.white.opacity(0.15) : Color.white.opacity(0.05))
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Terminal Button
-
-struct TerminalButton: View {
-    let isEnabled: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button {
-            if isEnabled {
-                onTap()
-            }
-        } label: {
-            HStack(spacing: 3) {
-                Image(systemName: "terminal")
-                    .font(.system(size: 9, weight: .medium))
-                Text(String(localized: "chat.terminal"))
-                    .font(.system(size: 11, weight: .medium))
-            }
-            .foregroundColor(isEnabled ? .black : .white.opacity(0.4))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(isEnabled ? Color.white.opacity(0.95) : Color.white.opacity(0.1))
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-}
