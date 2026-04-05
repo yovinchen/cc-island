@@ -1208,8 +1208,22 @@ struct DroidHookSource: HookSource {
 // MARK: - CodeBuddy Hook Source
 
 struct CodeBuddyHookSource: HookSource {
+    /// CodeBuddy supports 7 events (no Notification, no SubagentStop, no PermissionRequest).
+    /// Permissions are handled via PreToolUse's `permissionDecision` field, not a separate event.
+    /// See: https://www.codebuddy.ai/docs/ide/Features/hooks
+    private static let codeBuddyEvents: [GenericSettingsHookSource.EventConfig] = [
+        .init("SessionStart"),
+        .init("SessionEnd"),
+        .init("PreToolUse", matcher: "*"),
+        .init("PostToolUse", matcher: "*"),
+        .init("UserPromptSubmit"),
+        .init("Stop"),
+        .init("PreCompact"),
+    ]
+
     private let inner = GenericSettingsHookSource(
-        sourceType: .codebuddy, displayName: "CodeBuddy", configDir: ".codebuddy", sourceName: "codebuddy"
+        sourceType: .codebuddy, displayName: "CodeBuddy", configDir: ".codebuddy",
+        sourceName: "codebuddy", events: codeBuddyEvents
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
