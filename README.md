@@ -234,9 +234,6 @@ Claude Island App (NotchView)
 | 终端标题 (Ghostty) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | 终端跳转 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | macOS 系统通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-
-> 🚫 Trae 注：当前代码向 `~/.trae/settings.json` 写入 Claude Code 格式的 Hook 配置，但 Trae IDE 使用 `.rules` 文件（Markdown 格式）且 Trae Agent 使用 YAML 配置，均不支持 JSON hooks API。集成实际无效，待 Trae 官方提供 Hooks API 后适配。
-
 ### Hook 事件
 
 应用通过 Hook 监听以下事件：
