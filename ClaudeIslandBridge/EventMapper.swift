@@ -249,8 +249,6 @@ enum EventMapper {
             "agentturncomplete": "Stop",
             // Copilot-specific aliases
             "tooluse": "PreToolUse",
-            "userpromptsubmitted": "UserPromptSubmit",
-            "pretooluse": "PreToolUse",
             // Cursor-specific events
             "beforesubmitprompt": "UserPromptSubmit",
             "beforeshellexecution": "PermissionRequest",
