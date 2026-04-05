@@ -275,7 +275,7 @@ struct ToolSetupRow: View {
         case .opencode: return "~/.config/opencode/plugins/"
         case .copilot: return "~/.copilot/config.json"
         case .qoder: return "~/.qoder/settings.json"
-        case .droid: return "~/.droid/settings.json"
+        case .droid: return "~/.factory/settings.json"
         case .codebuddy: return "~/.codebuddy/settings.json"
         case .trae: return "~/.trae/settings.json"
         default: return ""

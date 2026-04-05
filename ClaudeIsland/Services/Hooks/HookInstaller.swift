@@ -219,8 +219,8 @@ struct HookInstaller {
             installed.append(.qoder)
         }
 
-        // Droid: check ~/.droid
-        if fm.fileExists(atPath: "\(home)/.droid") {
+        // Droid (Factory): check ~/.factory
+        if fm.fileExists(atPath: "\(home)/.factory") {
             installed.append(.droid)
         }
 
@@ -1131,7 +1131,7 @@ struct QoderHookSource: HookSource {
 
 struct DroidHookSource: HookSource {
     private let inner = GenericSettingsHookSource(
-        sourceType: .droid, displayName: "Droid", configDir: ".droid", sourceName: "droid"
+        sourceType: .droid, displayName: "Droid", configDir: ".factory", sourceName: "droid"
     )
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
