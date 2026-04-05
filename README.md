@@ -192,9 +192,9 @@ Claude Island App (NotchView)
 | **Droid** | `settings.json` | `~/.droid` | Bridge CLI (`command`) | 6 | 默认 |
 | **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 6 | 默认 |
 | **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 6 | 默认 |
-| **Trae** ⚠️ | `settings.json` | `~/.trae` | Bridge CLI (`command`) | 6 | 默认 |
+| **Trae** | — | `~/.trae` | — | — | — |
 
-> ⚠️ Trae 目前不提供 Hooks API，配置写入后不会被 Trae 读取。预留集成，待官方支持后生效。
+> 🚫 Trae 暂不支持：Trae IDE 使用 `.rules` 配置（Markdown 格式），Trae Agent 使用 YAML 配置，均不提供 Hooks API。待官方支持后适配。
 
 ### Hook 支持矩阵
 
@@ -202,18 +202,18 @@ Claude Island App (NotchView)
 
 | Hook 事件 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
 |-----------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
-| SessionStart | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
-| SessionEnd | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+| SessionStart | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| SessionEnd | ✅ | ✅ | 📁 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | UserPromptSubmit | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ⚠️ |
-| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ⚠️ |
+| PreToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
+| PostToolUse | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | PermissionRequest | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Stop | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+| Stop | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 | SubagentStop | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Notification | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ⚠️ |
+| Notification | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | PreCompact | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-> ✅ = 支持　❌ = 不支持　📁 = 通过文件监听实现（非 Hook）　⚠️ = 已写入配置但目标工具尚未提供 Hooks API，实际无效
+> ✅ = 支持　❌ = 不支持　📁 = 通过文件监听实现（非 Hook）　🚫 = 暂不支持（工具未提供 Hooks API）
 
 ### 功能支持矩阵
 
@@ -221,8 +221,8 @@ Claude Island App (NotchView)
 
 | 功能 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
 |------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
-| 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
-| 工具执行追踪 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ⚠️ |
+| 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| 工具执行追踪 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
 | 权限审批（Notch） | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 权限响应格式 | hookSpecificOutput | 通用 JSON | — | — | — | — | — | — | — | — | — |
 | Always Allow (acceptEdits) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
@@ -231,11 +231,11 @@ Claude Island App (NotchView)
 | 子代理追踪 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 上下文压缩通知 | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | StatusLine 集成 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 终端标题 (Ghostty) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
-| 终端跳转 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
-| macOS 系统通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ |
+| 终端标题 (Ghostty) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| 终端跳转 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
+| macOS 系统通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 
-> ⚠️ Trae 注：当前代码向 `~/.trae/settings.json` 写入 Claude Code 格式的 Hook 配置，但 Trae IDE 使用 `.rules` 文件（Markdown 格式）且 Trae Agent 使用 YAML 配置，均不支持 JSON hooks API。集成实际无效，待 Trae 官方提供 Hooks API 后适配。
+> 🚫 Trae 注：当前代码向 `~/.trae/settings.json` 写入 Claude Code 格式的 Hook 配置，但 Trae IDE 使用 `.rules` 文件（Markdown 格式）且 Trae Agent 使用 YAML 配置，均不支持 JSON hooks API。集成实际无效，待 Trae 官方提供 Hooks API 后适配。
 
 ### Hook 事件
 
