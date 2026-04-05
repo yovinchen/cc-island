@@ -33,6 +33,10 @@ enum EventMapper {
 
         if let pid = input["pid"] ?? nested(input, "session", "pid") {
             payload["pid"] = pid
+        } else {
+            // Fallback: use bridge's parent PID (the CLI/IDE process that invoked us)
+            // Ensures PID-based terminal focus works even when hook input lacks pid field
+            payload["pid"] = getppid()
         }
 
         // Tool info

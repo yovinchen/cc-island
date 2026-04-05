@@ -366,26 +366,51 @@ struct SessionState: Identifiable, Sendable {
         phase.needsAttention
     }
 
-    /// Human-readable terminal app name derived from TERM_PROGRAM env var
+    /// Human-readable terminal/IDE app name derived from env vars
     var terminalAppName: String? {
-        guard let termProgram = env?["TERM_PROGRAM"] else { return nil }
-        switch termProgram.lowercased() {
-        case "apple_terminal": return "Terminal"
-        case "iterm.app": return "iTerm2"
-        case "ghostty": return "Ghostty"
-        case "wezterm": return "WezTerm"
-        case "alacritty": return "Alacritty"
-        case "kitty": return "Kitty"
-        case "hyper": return "Hyper"
-        case "tmux": return "tmux"
-        case "vscode": return "VS Code"
-        default: return termProgram
+        // Try TERM_PROGRAM first (terminal-based CLIs)
+        if let termProgram = env?["TERM_PROGRAM"] {
+            switch termProgram.lowercased() {
+            case "apple_terminal": return "Terminal"
+            case "iterm.app": return "iTerm2"
+            case "ghostty": return "Ghostty"
+            case "wezterm": return "WezTerm"
+            case "alacritty": return "Alacritty"
+            case "kitty": return "Kitty"
+            case "hyper": return "Hyper"
+            case "tmux": return "tmux"
+            case "vscode": return "VS Code"
+            default: return termProgram
+            }
         }
+
+        // Fallback: __CFBundleIdentifier (IDE-based CLIs)
+        if let bundleId = env?["__CFBundleIdentifier"] {
+            let ideNames: [String: String] = [
+                "com.microsoft.VSCode": "VS Code",
+                "com.todesktop.230313mzl4w4u92": "Cursor",
+                "com.jetbrains.intellij": "IntelliJ",
+                "com.jetbrains.intellij.ce": "IntelliJ CE",
+                "com.jetbrains.WebStorm": "WebStorm",
+                "com.jetbrains.pycharm": "PyCharm",
+                "com.jetbrains.pycharm.ce": "PyCharm CE",
+                "com.jetbrains.goland": "GoLand",
+                "com.jetbrains.CLion": "CLion",
+                "com.jetbrains.rider": "Rider",
+                "com.jetbrains.rubymine": "RubyMine",
+                "com.jetbrains.PhpStorm": "PhpStorm",
+                "dev.zed.Zed": "Zed",
+            ]
+            return ideNames[bundleId]
+        }
+
+        return nil
     }
 
-    /// Whether the terminal can be focused (tmux or known terminal app)
+    /// Whether the terminal/IDE can be focused.
+    /// Supports: tmux, TERM_PROGRAM (terminals), __CFBundleIdentifier (IDEs), PID walk (fallback)
     var canFocusTerminal: Bool {
-        isInTmux || env?["TERM_PROGRAM"] != nil
+        isInTmux || env?["TERM_PROGRAM"] != nil || env?["__CFBundleIdentifier"] != nil || pid != nil
     }
 }
 

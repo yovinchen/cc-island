@@ -50,20 +50,31 @@ actor TerminalFocuser {
         }
     }
 
-    // MARK: - Strategy 2: Env-based terminal focus
+    // MARK: - Strategy 2: Env-based terminal/IDE focus
 
     private func focusViaEnv(_ env: [String: String]) async -> Bool {
-        guard let termProgram = env["TERM_PROGRAM"] else { return false }
-
-        switch termProgram.lowercased() {
-        case "iterm.app":
-            return await focusITerm2(sessionId: env["ITERM_SESSION_ID"])
-        case "kitty":
-            return await focusKitty(windowId: env["KITTY_WINDOW_ID"])
-        default:
-            // Generic: activate by bundle identifier or app name
-            return activateTerminalApp(termProgram: termProgram)
+        // Try TERM_PROGRAM first (terminal-based CLIs)
+        if let termProgram = env["TERM_PROGRAM"] {
+            switch termProgram.lowercased() {
+            case "iterm.app":
+                return await focusITerm2(sessionId: env["ITERM_SESSION_ID"])
+            case "kitty":
+                return await focusKitty(windowId: env["KITTY_WINDOW_ID"])
+            default:
+                if activateTerminalApp(termProgram: termProgram) { return true }
+            }
         }
+
+        // Fallback: __CFBundleIdentifier (IDE-based CLIs like Qoder in IntelliJ/VS Code)
+        if let bundleId = env["__CFBundleIdentifier"], !bundleId.isEmpty {
+            if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleId }) {
+                app.activate()
+                Self.logger.debug("Focused IDE via __CFBundleIdentifier: \(bundleId, privacy: .public)")
+                return true
+            }
+        }
+
+        return false
     }
 
     private func focusITerm2(sessionId: String?) async -> Bool {
@@ -116,8 +127,9 @@ actor TerminalFocuser {
     // MARK: - Strategy 3: PID-based focus
 
     private func focusViaPid(_ pid: Int) async -> Bool {
-        // Walk up process tree to find terminal app
-        let terminalBundleIds = [
+        // Walk up process tree to find terminal app or IDE
+        let knownAppBundleIds: Set<String> = [
+            // Terminals
             "com.apple.Terminal",
             "com.googlecode.iterm2",
             "com.mitchellh.ghostty",
@@ -125,7 +137,20 @@ actor TerminalFocuser {
             "org.alacritty",
             "com.github.wez.wezterm",
             "co.zeit.hyper",
-            "com.microsoft.VSCode"
+            // IDEs (for Qoder, Cursor, Copilot etc. running as extensions)
+            "com.microsoft.VSCode",
+            "com.jetbrains.intellij",
+            "com.jetbrains.intellij.ce",
+            "com.jetbrains.WebStorm",
+            "com.jetbrains.pycharm",
+            "com.jetbrains.pycharm.ce",
+            "com.jetbrains.goland",
+            "com.jetbrains.CLion",
+            "com.jetbrains.rider",
+            "com.jetbrains.rubymine",
+            "com.jetbrains.PhpStorm",
+            "com.todesktop.230313mzl4w4u92",  // Cursor
+            "dev.zed.Zed",
         ]
 
         let runningApps = NSWorkspace.shared.runningApplications
@@ -136,9 +161,9 @@ actor TerminalFocuser {
             let parentPid = getParentPid(currentPid)
             if parentPid <= 1 { break }
 
-            // Check if this PID belongs to a known terminal app
+            // Check if this PID belongs to a known terminal/IDE app
             if let app = runningApps.first(where: { $0.processIdentifier == parentPid }) {
-                if let bundleId = app.bundleIdentifier, terminalBundleIds.contains(bundleId) {
+                if let bundleId = app.bundleIdentifier, knownAppBundleIds.contains(bundleId) {
                     app.activate()
                     Self.logger.debug("Focused terminal via PID walk: \(app.localizedName ?? "unknown", privacy: .public)")
                     return true
