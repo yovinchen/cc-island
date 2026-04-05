@@ -111,17 +111,36 @@ struct ChatHistoryItem: Identifiable, Equatable, Sendable {
     let type: ChatHistoryItemType
     let timestamp: Date
 
-    static func == (lhs: ChatHistoryItem, rhs: ChatHistoryItem) -> Bool {
+    nonisolated static func == (lhs: ChatHistoryItem, rhs: ChatHistoryItem) -> Bool {
         lhs.id == rhs.id && lhs.type == rhs.type
     }
 }
 
-enum ChatHistoryItemType: Equatable, Sendable {
+enum ChatHistoryItemType: Sendable {
     case user(String)
     case assistant(String)
     case toolCall(ToolCallItem)
     case thinking(String)
     case interrupted
+}
+
+extension ChatHistoryItemType: Equatable {
+    nonisolated static func == (lhs: ChatHistoryItemType, rhs: ChatHistoryItemType) -> Bool {
+        switch (lhs, rhs) {
+        case (.user(let lhsText), .user(let rhsText)):
+            return lhsText == rhsText
+        case (.assistant(let lhsText), .assistant(let rhsText)):
+            return lhsText == rhsText
+        case (.toolCall(let lhsTool), .toolCall(let rhsTool)):
+            return lhsTool == rhsTool
+        case (.thinking(let lhsText), .thinking(let rhsText)):
+            return lhsText == rhsText
+        case (.interrupted, .interrupted):
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 struct ToolCallItem: Equatable, Sendable {
@@ -174,12 +193,12 @@ struct ToolCallItem: Equatable, Sendable {
     }
 
     // Custom Equatable implementation to handle structuredResult
-    static func == (lhs: ToolCallItem, rhs: ToolCallItem) -> Bool {
+    nonisolated static func == (lhs: ToolCallItem, rhs: ToolCallItem) -> Bool {
         lhs.name == rhs.name &&
         lhs.input == rhs.input &&
         lhs.status == rhs.status &&
         lhs.result == rhs.result &&
-        lhs.structuredResult == rhs.structuredResult &&
+        String(describing: lhs.structuredResult) == String(describing: rhs.structuredResult) &&
         lhs.subagentTools == rhs.subagentTools
     }
 }
@@ -219,7 +238,7 @@ extension ToolStatus: Equatable {
 // MARK: - Subagent Tool Call
 
 /// Represents a tool call made by a subagent (Task tool)
-struct SubagentToolCall: Equatable, Identifiable, Sendable {
+struct SubagentToolCall: Identifiable, Sendable {
     let id: String
     let name: String
     let input: [String: String]
@@ -276,5 +295,15 @@ struct SubagentToolCall: Equatable, Identifiable, Sendable {
         default:
             return name
         }
+    }
+}
+
+extension SubagentToolCall: Equatable {
+    nonisolated static func == (lhs: SubagentToolCall, rhs: SubagentToolCall) -> Bool {
+        lhs.id == rhs.id &&
+            lhs.name == rhs.name &&
+            lhs.input == rhs.input &&
+            lhs.status == rhs.status &&
+            lhs.timestamp == rhs.timestamp
     }
 }

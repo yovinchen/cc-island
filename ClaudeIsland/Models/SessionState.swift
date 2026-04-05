@@ -159,7 +159,7 @@ enum ApprovalChannel: String, Codable, Sendable {
 
 /// Complete state for a single Claude session
 /// This is the single source of truth - all state reads and writes go through SessionStore
-struct SessionState: Equatable, Identifiable, Sendable {
+struct SessionState: Identifiable, Sendable {
     // MARK: - Identity
 
     let sessionId: String
@@ -378,10 +378,33 @@ struct SessionState: Equatable, Identifiable, Sendable {
     }
 }
 
+extension SessionState: Equatable {
+    nonisolated static func == (lhs: SessionState, rhs: SessionState) -> Bool {
+        lhs.sessionId == rhs.sessionId &&
+            lhs.source == rhs.source &&
+            lhs.cwd == rhs.cwd &&
+            lhs.projectName == rhs.projectName &&
+            lhs.pid == rhs.pid &&
+            lhs.tty == rhs.tty &&
+            lhs.isInTmux == rhs.isInTmux &&
+            lhs.approvalChannel == rhs.approvalChannel &&
+            lhs.env == rhs.env &&
+            lhs.phase == rhs.phase &&
+            lhs.chatItems == rhs.chatItems &&
+            lhs.toolTracker == rhs.toolTracker &&
+            lhs.subagentState == rhs.subagentState &&
+            lhs.conversationInfo == rhs.conversationInfo &&
+            lhs.needsClearReconciliation == rhs.needsClearReconciliation &&
+            lhs.usageData == rhs.usageData &&
+            lhs.lastActivity == rhs.lastActivity &&
+            lhs.createdAt == rhs.createdAt
+    }
+}
+
 // MARK: - Tool Tracker
 
 /// Unified tool tracking - replaces multiple dictionaries in ChatHistoryManager
-struct ToolTracker: Equatable, Sendable {
+struct ToolTracker: Sendable {
     /// Tools currently in progress, keyed by tool_use_id
     var inProgress: [String: ToolInProgress]
 
@@ -433,25 +456,54 @@ struct ToolTracker: Equatable, Sendable {
     }
 }
 
+extension ToolTracker: Equatable {
+    nonisolated static func == (lhs: ToolTracker, rhs: ToolTracker) -> Bool {
+        lhs.inProgress == rhs.inProgress &&
+            lhs.seenIds == rhs.seenIds &&
+            lhs.lastSyncOffset == rhs.lastSyncOffset &&
+            lhs.lastSyncTime == rhs.lastSyncTime
+    }
+}
+
 /// A tool currently in progress
-struct ToolInProgress: Equatable, Sendable {
+struct ToolInProgress: Sendable {
     let id: String
     let name: String
     let startTime: Date
     var phase: ToolInProgressPhase
 }
 
+extension ToolInProgress: Equatable {
+    nonisolated static func == (lhs: ToolInProgress, rhs: ToolInProgress) -> Bool {
+        lhs.id == rhs.id &&
+            lhs.name == rhs.name &&
+            lhs.startTime == rhs.startTime &&
+            lhs.phase == rhs.phase
+    }
+}
+
 /// Phase of a tool in progress
-enum ToolInProgressPhase: Equatable, Sendable {
+enum ToolInProgressPhase: Sendable {
     case starting
     case running
     case pendingApproval
 }
 
+extension ToolInProgressPhase: Equatable {
+    nonisolated static func == (lhs: ToolInProgressPhase, rhs: ToolInProgressPhase) -> Bool {
+        switch (lhs, rhs) {
+        case (.starting, .starting), (.running, .running), (.pendingApproval, .pendingApproval):
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 // MARK: - Subagent State
 
 /// State for Task (subagent) tools
-struct SubagentState: Equatable, Sendable {
+struct SubagentState: Sendable {
     /// Active Task tools, keyed by task tool_use_id
     var activeTasks: [String: TaskContext]
 
@@ -528,11 +580,29 @@ struct SubagentState: Equatable, Sendable {
     }
 }
 
+extension SubagentState: Equatable {
+    nonisolated static func == (lhs: SubagentState, rhs: SubagentState) -> Bool {
+        lhs.activeTasks == rhs.activeTasks &&
+            lhs.taskStack == rhs.taskStack &&
+            lhs.agentDescriptions == rhs.agentDescriptions
+    }
+}
+
 /// Context for an active Task tool
-struct TaskContext: Equatable, Sendable {
+struct TaskContext: Sendable {
     let taskToolId: String
     let startTime: Date
     var agentId: String?
     var description: String?
     var subagentTools: [SubagentToolCall]
+}
+
+extension TaskContext: Equatable {
+    nonisolated static func == (lhs: TaskContext, rhs: TaskContext) -> Bool {
+        lhs.taskToolId == rhs.taskToolId &&
+            lhs.startTime == rhs.startTime &&
+            lhs.agentId == rhs.agentId &&
+            lhs.description == rhs.description &&
+            lhs.subagentTools == rhs.subagentTools
+    }
 }

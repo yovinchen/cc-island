@@ -13,7 +13,7 @@ import os.log
 private let logger = Logger(subsystem: "com.claudeisland", category: "Usage")
 
 /// API usage data for display
-struct UsageData: Equatable, Sendable {
+struct UsageData: Sendable {
     /// Primary rate limit usage percentage (0.0 - 1.0)
     var primaryUsedPercent: Double?
 
@@ -35,6 +35,16 @@ struct UsageData: Equatable, Sendable {
     }
 
     nonisolated static let empty = UsageData()
+}
+
+extension UsageData: Equatable {
+    nonisolated static func == (lhs: UsageData, rhs: UsageData) -> Bool {
+        lhs.primaryUsedPercent == rhs.primaryUsedPercent &&
+            lhs.primaryResetsAt == rhs.primaryResetsAt &&
+            lhs.secondaryUsedPercent == rhs.secondaryUsedPercent &&
+            lhs.model == rhs.model &&
+            lhs.contextWindowPercent == rhs.contextWindowPercent
+    }
 }
 
 @MainActor
