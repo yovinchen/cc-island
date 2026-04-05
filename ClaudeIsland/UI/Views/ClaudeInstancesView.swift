@@ -453,19 +453,19 @@ enum ApprovalButtonStyle {
 
     var foregroundColor: Color {
         switch self {
-        case .deny: return .white.opacity(0.6)
+        case .deny: return .white.opacity(0.7)
         case .allowOnce: return .white.opacity(0.9)
         case .alwaysAllow: return .white
-        case .bypass: return .black
+        case .bypass: return .white
         }
     }
 
     var backgroundColor: Color {
         switch self {
-        case .deny: return Color.white.opacity(0.08)
-        case .allowOnce: return Color.white.opacity(0.15)
-        case .alwaysAllow: return Color.white.opacity(0.25)
-        case .bypass: return Color.white.opacity(0.9)
+        case .deny: return Color.white.opacity(0.1)
+        case .allowOnce: return Color.white.opacity(0.16)
+        case .alwaysAllow: return Color(red: 0.25, green: 0.48, blue: 0.85)
+        case .bypass: return Color(red: 0.82, green: 0.25, blue: 0.25)
         }
     }
 }

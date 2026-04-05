@@ -1146,48 +1146,48 @@ struct ChatApprovalBar: View {
             .opacity(showContent ? 1 : 0)
             .offset(x: showContent ? 0 : -10)
 
-            // 4 equal-width buttons
+            // 4 equal-width colored buttons
             HStack(spacing: 5) {
                 Button { onDeny() } label: {
                     Text(String(localized: "chat.deny"))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.08))
+                        .background(Color.white.opacity(0.1))
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
 
                 Button { onApprove() } label: {
                     Text(String(localized: "chat.allow_once"))
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.15))
+                        .background(Color.white.opacity(0.16))
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
 
                 Button { onAlwaysAllow() } label: {
                     Text(String(localized: "chat.always_allow"))
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.25))
+                        .background(Color(red: 0.25, green: 0.48, blue: 0.85))
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
 
                 Button { onAutoApprove() } label: {
                     Text(String(localized: "chat.auto_approve"))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.black)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.9))
+                        .background(Color(red: 0.82, green: 0.25, blue: 0.25))
                         .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
