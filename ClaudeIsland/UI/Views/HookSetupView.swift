@@ -225,6 +225,10 @@ struct ToolSetupRow: View {
                     }
                 }
 
+                // Source pixel icon
+                SourceIcon(source: source, size: 14)
+                    .frame(width: 18, height: 18)
+
                 // Tool name
                 VStack(alignment: .leading, spacing: 2) {
                     Text(source.displayName)

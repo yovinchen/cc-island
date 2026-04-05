@@ -257,7 +257,12 @@ struct SettingsHookList: View {
     var body: some View {
         VStack(spacing: 4) {
             ForEach(sources, id: \.rawValue) { source in
-                HStack {
+                HStack(spacing: 8) {
+                    // Source pixel icon
+                    SourceIcon(source: source, size: 14)
+                        .frame(width: 18, height: 18)
+
+                    // Status dot
                     Circle()
                         .fill(statusColor(for: source))
                         .frame(width: 6, height: 6)
