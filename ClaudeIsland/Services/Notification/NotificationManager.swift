@@ -26,7 +26,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
 
     func requestAuthorization() {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.isAuthorized = granted
                 if let error {
                     print("[NotificationManager] Authorization error: \(error)")
@@ -103,7 +103,9 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
             let idsToRemove = notifications
                 .filter { ($0.request.content.userInfo["sessionId"] as? String) == sessionId }
                 .map { $0.request.identifier }
-            self.center.removeDeliveredNotifications(withIdentifiers: idsToRemove)
+            Task { @MainActor in
+                NotificationManager.shared.center.removeDeliveredNotifications(withIdentifiers: idsToRemove)
+            }
         }
     }
 

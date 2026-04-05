@@ -10,10 +10,9 @@ import AppKit
 import Foundation
 import os.log
 
-private let logger = Logger(subsystem: "com.claudeisland", category: "TerminalFocuser")
-
 actor TerminalFocuser {
     static let shared = TerminalFocuser()
+    nonisolated static let logger = Logger(subsystem: "com.claudeisland", category: "TerminalFocuser")
 
     private init() {}
 
@@ -141,7 +140,7 @@ actor TerminalFocuser {
             if let app = runningApps.first(where: { $0.processIdentifier == parentPid }) {
                 if let bundleId = app.bundleIdentifier, terminalBundleIds.contains(bundleId) {
                     app.activate()
-                    logger.debug("Focused terminal via PID walk: \(app.localizedName ?? "unknown", privacy: .public)")
+                    Self.logger.debug("Focused terminal via PID walk: \(app.localizedName ?? "unknown", privacy: .public)")
                     return true
                 }
             }
@@ -173,7 +172,7 @@ actor TerminalFocuser {
         if let bundleId = bundleIdMap[key], !bundleId.isEmpty {
             if let app = NSWorkspace.shared.runningApplications.first(where: { $0.bundleIdentifier == bundleId }) {
                 app.activate()
-                logger.debug("Activated terminal: \(termProgram, privacy: .public)")
+                Self.logger.debug("Activated terminal: \(termProgram, privacy: .public)")
                 return true
             }
         }
@@ -183,7 +182,7 @@ actor TerminalFocuser {
             $0.localizedName?.lowercased().contains(key) == true
         }) {
             app.activate()
-            logger.debug("Activated terminal by name: \(termProgram, privacy: .public)")
+            Self.logger.debug("Activated terminal by name: \(termProgram, privacy: .public)")
             return true
         }
 
@@ -196,7 +195,7 @@ actor TerminalFocuser {
         var error: NSDictionary?
         script.executeAndReturnError(&error)
         if let error = error {
-            logger.debug("AppleScript error: \(error, privacy: .public)")
+            Self.logger.debug("AppleScript error: \(error, privacy: .public)")
             return false
         }
         return true

@@ -90,7 +90,7 @@ struct HookEvent: Decodable, Sendable {
         self.env = env
     }
 
-    var sessionPhase: SessionPhase {
+    nonisolated var sessionPhase: SessionPhase {
         if event == "PreCompact" {
             return .compacting
         }
@@ -123,7 +123,7 @@ struct HookEvent: Decodable, Sendable {
 
     /// Resolved approval channel for the event.
     /// Claude permission requests still default to socket when the payload omitted a channel.
-    var resolvedApprovalChannel: ApprovalChannel {
+    nonisolated var resolvedApprovalChannel: ApprovalChannel {
         if expectsResponse && approvalChannel == .none && source == .claude {
             return .socket
         }

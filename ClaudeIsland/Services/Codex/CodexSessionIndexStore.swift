@@ -27,8 +27,6 @@ struct CodexSessionIndexStore {
         }
 
         var entries: [CodexSessionEntry] = []
-        let decoder = JSONDecoder()
-
         for line in content.components(separatedBy: .newlines) where !line.isEmpty {
             guard let lineData = line.data(using: .utf8) else { continue }
 

@@ -117,8 +117,9 @@ actor SessionStore {
 
     private func processHookEvent(_ event: HookEvent) async {
         let sessionId = event.sessionId
-        let isNewSession = sessions[sessionId] == nil
+        let isNewSession = sessions.keys.contains(sessionId) == false
         var session = sessions[sessionId] ?? createSession(from: event)
+        let resolvedApprovalChannel = event.resolvedApprovalChannel
 
         // Track new session in Mixpanel
         if isNewSession {
@@ -134,7 +135,7 @@ actor SessionStore {
             session.tty = tty.replacingOccurrences(of: "/dev/", with: "")
         }
         session.source = event.source
-        session.approvalChannel = event.resolvedApprovalChannel
+        session.approvalChannel = resolvedApprovalChannel
         if let eventEnv = event.env {
             session.env = eventEnv
         }
@@ -165,7 +166,7 @@ actor SessionStore {
         }()
 
         if shouldBlockPhaseChange {
-            Self.logger.debug("Blocking phase change from waitingForApproval -> \(String(describing: newPhase), privacy: .public) (event: \(event.event ?? "nil", privacy: .public))")
+            Self.logger.debug("Blocking phase change from waitingForApproval -> \(String(describing: newPhase), privacy: .public) (event: \(event.event, privacy: .public))")
         } else if session.phase.canTransition(to: newPhase) {
             session.phase = newPhase
         } else {
@@ -177,7 +178,7 @@ actor SessionStore {
             updateToolStatus(in: &session, toolId: toolUseId, status: .waitingForApproval)
         }
 
-        processToolTracking(event: event, session: &session)
+        await processToolTracking(event: event, session: &session)
         processSubagentTracking(event: event, session: &session)
 
         if event.event == "Stop" {
@@ -193,9 +194,8 @@ actor SessionStore {
 
         // Process rate limits if present
         if let rateLimits = event.rateLimits {
-            var rateLimitsDict: [String: Any] = [:]
-            for (key, value) in rateLimits {
-                rateLimitsDict[key] = value.value
+            let rateLimitsDict = rateLimits.reduce(into: [String: Any]()) { partialResult, entry in
+                partialResult[entry.key] = entry.value.value
             }
             await MainActor.run {
                 UsageDataManager.shared.updateFromHookEvent(
@@ -220,7 +220,7 @@ actor SessionStore {
         )
     }
 
-    private func processToolTracking(event: HookEvent, session: inout SessionState) {
+    private func processToolTracking(event: HookEvent, session: inout SessionState) async {
         switch event.event {
         case "PreToolUse":
             if let toolUseId = event.toolUseId, let toolName = event.tool {
@@ -285,7 +285,10 @@ actor SessionStore {
                 }
                 // Clear Codex Desktop approval notification state
                 if session.source == .codexDesktop {
-                    CodexDesktopApprovalWatcher.shared.clearNotification(sessionId: session.sessionId)
+                    let sessionId = session.sessionId
+                    await MainActor.run {
+                        CodexDesktopApprovalWatcher.shared.clearNotification(sessionId: sessionId)
+                    }
                 }
             }
 
@@ -894,7 +897,9 @@ actor SessionStore {
     private func processSessionEnd(sessionId: String) async {
         sessions.removeValue(forKey: sessionId)
         cancelPendingSync(sessionId: sessionId)
-        TerminalTitleManager.shared.clearTitle(for: sessionId)
+        await MainActor.run {
+            TerminalTitleManager.shared.clearTitle(for: sessionId)
+        }
     }
 
     // MARK: - History Loading
@@ -1025,8 +1030,10 @@ actor SessionStore {
         sessionsSubject.send(sortedSessions)
 
         // Update terminal titles for all active sessions
-        for session in sortedSessions {
-            TerminalTitleManager.shared.updateTitle(for: session)
+        Task { @MainActor in
+            for session in sortedSessions {
+                TerminalTitleManager.shared.updateTitle(for: session)
+            }
         }
     }
 
