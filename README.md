@@ -189,9 +189,9 @@ Claude Island App (NotchView)
 | **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 5 | 30s |
 | **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
 | **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
-| **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 6 | 默认 |
-| **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 6 | 默认 |
-| **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 6 | 默认 |
+| **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 9 | 默认 |
+| **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 9 | 默认 |
+| **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 8 | 默认 |
 | **Trae** | — | `~/.trae` | — | — | — |
 
 > 🚫 Trae 暂不支持：Trae IDE 使用 `.rules` 配置（Markdown 格式），Trae Agent 使用 YAML 配置，均不提供 Hooks API。待官方支持后适配。
@@ -311,14 +311,15 @@ Claude Island App (NotchView)
 - **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `stop`, `notification`
 - **注意**: 修改配置后需重启 Qoder CLI 生效（不支持热重载）
 
-#### CodeBuddy ✅ 支持
+#### CodeBuddy ✅ 完整支持
 
-- **官方文档**: [codebuddy.ai/docs/cli/settings](https://www.codebuddy.ai/docs/cli/settings)
-- **配置文件**: `~/.codebuddy/settings.json`
-- **格式**: JSON，与 Claude Code 格式兼容
-- **原生事件名**: PreToolUse, PostToolUse, UserPromptSubmit, Notification, Stop, SubagentStop, SessionStart, SessionEnd, PreCompact
-- **Claude Island 映射**: `sessionStart`, `sessionEnd`, `preToolUse`, `postToolUse`, `stop`, `notification`
-- **注意**: CodeBuddy 是腾讯云出品，hooks 格式与 Claude Code 高度兼容
+- **官方文档**: [codebuddy.ai/docs/ide/Features/hooks](https://www.codebuddy.ai/docs/ide/Features/hooks#configuration-guide)
+- **配置文件**: `~/.codebuddy/settings.json`（用户级）、`<workspace>/.codebuddy/settings.json`（项目级）
+- **格式**: JSON，与 Claude Code hooks 规范完全兼容（PascalCase 事件名、嵌套 `{matcher, hooks}` 结构）
+- **注册事件**: SessionStart, SessionEnd, PreToolUse, PostToolUse, UserPromptSubmit, Stop, Notification, PreCompact（8 个）
+- **权限响应**: 支持 `hookSpecificOutput` 格式，包含 `permissionDecision`（allow/deny/ask）和 `updatedPermissions`
+- **超时**: 默认 60s，可按 hook 自定义（简单校验 5-10s，文件操作 15-30s，网络请求 30-60s）
+- **注意**: CodeBuddy 是腾讯云出品，与 Claude Code hooks 规范完全兼容，支持 matcher 正则过滤和 exit code 2 阻塞模式
 
 #### Trae 🚫 暂不支持
 
