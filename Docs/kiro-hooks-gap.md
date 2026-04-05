@@ -51,7 +51,8 @@ Kiro **当前处于部分支持状态**。Claude Island 已能生成 `claude-isl
 **最小实现方案**
 1. 已按 Kiro CLI 路线新增自定义 `KiroHookSource`。
 2. 当前实现通过 `~/.kiro/agents/claude-island.json` 提供 hooks，而不是修改用户现有 agent。
-3. 后续若要补强，需要决定是否支持自动设置默认 agent，或保持显式 `--agent claude-island` 的使用方式。
+3. 当前会同步安装 `~/.claude-island/bin/claude-island-kiro` wrapper，简化 `--agent claude-island` 的使用方式。
+4. 后续若要补强，再决定是否支持自动设置默认 agent。
 
 **主要阻塞**
 - 当前最大阻塞不是 hooks 骨架，而是产品策略：是否允许 Claude Island 自动改写 Kiro 的默认 agent 选择。
