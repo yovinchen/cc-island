@@ -53,6 +53,41 @@
 "settings.usage.show_desc" = "在刘海栏头部显示会话使用量环";
 "settings.usage.detail" = "刘海栏头部继续显示会话使用量环，账号额度详情则在完整的额度面板中查看。";
 
+/* Quota */
+"quota.title" = "额度";
+"quota.open_settings" = "设置";
+"quota.refresh" = "刷新";
+"quota.refresh_all" = "全部刷新";
+"quota.open_dashboard" = "打开面板";
+"quota.open_status" = "打开状态页";
+"quota.overview" = "概览";
+"quota.empty" = "还没有额度数据。先完成 provider 配置后再点击全部刷新。";
+"quota.no_providers" = "当前还没有可用的 provider。";
+"quota.select_provider" = "选择一个 provider 以查看额度详情。";
+"quota.updated_at %@" = "更新时间 %@";
+"quota.info.state" = "状态";
+"quota.info.source" = "来源";
+"quota.info.updated" = "更新时间";
+"quota.info.account" = "账号";
+"quota.info.organization" = "组织";
+"quota.info.plan" = "套餐";
+"quota.info.detail" = "详情";
+"quota.unknown" = "未知";
+"quota.credential" = "凭据";
+"quota.save_key" = "保存密钥";
+"quota.clear_key" = "清除密钥";
+"quota.setup" = "配置说明";
+"quota.zai_region" = "z.ai 区域";
+"quota.resets %@" = "重置于 %@";
+"quota.unlimited" = "无限制";
+"quota.remaining_usd" = "剩余 $%.2f";
+"quota.remaining_generic" = "剩余 %.0f";
+"quota.status.connected" = "已连接";
+"quota.status.setup" = "待配置";
+"quota.status.refreshing" = "刷新中";
+"quota.status.stale" = "已过期";
+"quota.status.error" = "错误";
+
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "诊断日志";
 "settings.diagnostics.desc" = "诊断日志记录 Hook、Socket 和会话事件，用于故障排查。";

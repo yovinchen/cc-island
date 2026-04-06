@@ -147,6 +147,11 @@ final class QuotaStore: ObservableObject {
         Task { await refreshAll() }
     }
 
+    func userVisibleRefresh(providerID: QuotaProviderID) {
+        guard !refreshInFlight else { return }
+        Task { await refresh(providerID: providerID) }
+    }
+
     func refresh(providerID: QuotaProviderID) async {
         guard let provider = QuotaProviderRegistry.provider(for: providerID),
               var record = records[providerID]

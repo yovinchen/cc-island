@@ -53,6 +53,41 @@
 "settings.usage.show_desc" = "Show session usage rings in notch header";
 "settings.usage.detail" = "Session usage rings remain in the notch header, while provider quota details now live in the full quota pane.";
 
+/* Quota */
+"quota.title" = "Quota";
+"quota.open_settings" = "Settings";
+"quota.refresh" = "Refresh";
+"quota.refresh_all" = "Refresh All";
+"quota.open_dashboard" = "Open Dashboard";
+"quota.open_status" = "Open Status";
+"quota.overview" = "Overview";
+"quota.empty" = "No quota data yet. Use Refresh All after configuring a provider.";
+"quota.no_providers" = "No providers configured yet.";
+"quota.select_provider" = "Select a provider to view quota details.";
+"quota.updated_at %@" = "Updated %@";
+"quota.info.state" = "State";
+"quota.info.source" = "Source";
+"quota.info.updated" = "Updated";
+"quota.info.account" = "Account";
+"quota.info.organization" = "Organization";
+"quota.info.plan" = "Plan";
+"quota.info.detail" = "Detail";
+"quota.unknown" = "Unknown";
+"quota.credential" = "Credential";
+"quota.save_key" = "Save Key";
+"quota.clear_key" = "Clear Key";
+"quota.setup" = "Setup";
+"quota.zai_region" = "z.ai region";
+"quota.resets %@" = "Resets %@";
+"quota.unlimited" = "Unlimited";
+"quota.remaining_usd" = "$%.2f remaining";
+"quota.remaining_generic" = "%.0f remaining";
+"quota.status.connected" = "Connected";
+"quota.status.setup" = "Setup";
+"quota.status.refreshing" = "Refreshing";
+"quota.status.stale" = "Stale";
+"quota.status.error" = "Error";
+
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "Diagnostic Log";
 "settings.diagnostics.desc" = "The diagnostic log captures hook, socket, and session events for troubleshooting.";

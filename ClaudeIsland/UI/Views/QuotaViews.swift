@@ -33,24 +33,24 @@ struct QuotaSettingsPane: View {
                 Spacer()
 
                 if let refreshedAt = quotaStore.lastGlobalRefreshAt {
-                    Text("Updated \(refreshedAt.formatted(date: .omitted, time: .shortened))")
+                    Text(String(format: String(localized: "quota.updated_at %@" ), refreshedAt.formatted(date: .omitted, time: .shortened)))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.45))
                 }
 
-                Button("Refresh All") {
+                Button(String(localized: "quota.refresh_all")) {
                     quotaStore.userVisibleRefresh()
                 }
                 .buttonStyle(SettingsButtonStyle())
             }
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Overview")
+                Text(String(localized: "quota.overview"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.8))
 
                 if headerRecords.isEmpty {
-                    Text("No quota data yet. Use Refresh All after configuring a provider.")
+                    Text(String(localized: "quota.empty"))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.45))
                 } else {
@@ -192,25 +192,25 @@ struct QuotaSettingsPane: View {
                 .padding(.trailing, 8)
             }
         } else {
-            Text("Select a provider to view quota details.")
+            Text(String(localized: "quota.select_provider"))
                 .foregroundColor(.white.opacity(0.5))
         }
     }
 
     private func quotaInfoGrid(for record: QuotaProviderRecord) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            QuotaInfoRow(label: "State", value: record.statusText)
-            QuotaInfoRow(label: "Source", value: record.effectiveSourceLabel)
-            QuotaInfoRow(label: "Updated", value: record.lastUpdatedText)
-            QuotaInfoRow(label: "Account", value: record.accountText ?? "Unknown")
+            QuotaInfoRow(label: String(localized: "quota.info.state"), value: record.statusText)
+            QuotaInfoRow(label: String(localized: "quota.info.source"), value: record.effectiveSourceLabel)
+            QuotaInfoRow(label: String(localized: "quota.info.updated"), value: record.lastUpdatedText)
+            QuotaInfoRow(label: String(localized: "quota.info.account"), value: record.accountText ?? String(localized: "quota.unknown"))
             if let organization = record.organizationText {
-                QuotaInfoRow(label: "Organization", value: organization)
+                QuotaInfoRow(label: String(localized: "quota.info.organization"), value: organization)
             }
             if let plan = record.planText {
-                QuotaInfoRow(label: "Plan", value: plan)
+                QuotaInfoRow(label: String(localized: "quota.info.plan"), value: plan)
             }
             if let detail = record.detailText {
-                QuotaInfoRow(label: "Detail", value: detail)
+                QuotaInfoRow(label: String(localized: "quota.info.detail"), value: detail)
             }
         }
         .padding(12)
@@ -222,7 +222,7 @@ struct QuotaSettingsPane: View {
 
     private func quotaSecretEditor(for record: QuotaProviderRecord) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Credential")
+            Text(String(localized: "quota.credential"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.8))
 
@@ -237,13 +237,13 @@ struct QuotaSettingsPane: View {
                 .foregroundColor(.white.opacity(0.9))
 
             HStack(spacing: 10) {
-                Button("Save Key") {
+                Button(String(localized: "quota.save_key")) {
                     quotaStore.saveSecret(secretValue, for: record.id)
-                    quotaStore.userVisibleRefresh()
+                    quotaStore.userVisibleRefresh(providerID: record.id)
                 }
                 .buttonStyle(SettingsButtonStyle())
 
-                Button("Clear Key") {
+                Button(String(localized: "quota.clear_key")) {
                     secretValue = ""
                     quotaStore.saveSecret("", for: record.id)
                 }
@@ -258,22 +258,26 @@ struct QuotaSettingsPane: View {
     }
 
     private func quotaSetupGuide(for record: QuotaProviderRecord) -> some View {
-        quotaTextBlock(title: "Setup", text: record.descriptor.credentialHint, color: .white.opacity(0.7))
+        quotaTextBlock(title: String(localized: "quota.setup"), text: record.descriptor.credentialHint, color: .white.opacity(0.7))
     }
 
     private var quotaZAIRegionPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("z.ai region")
+            Text(String(localized: "quota.zai_region"))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.8))
 
             Picker(
-                "z.ai region",
+                String(localized: "quota.zai_region"),
                 selection: Binding(
                     get: { QuotaPreferences.zaiRegion },
                     set: { newValue in
                         QuotaPreferences.zaiRegion = newValue
-                        quotaStore.userVisibleRefresh()
+                        if let selectedRecord {
+                            quotaStore.userVisibleRefresh(providerID: selectedRecord.id)
+                        } else {
+                            quotaStore.userVisibleRefresh()
+                        }
                     }
                 )
             ) {
@@ -292,20 +296,20 @@ struct QuotaSettingsPane: View {
 
     private func quotaActions(for record: QuotaProviderRecord) -> some View {
         HStack(spacing: 10) {
-            Button("Refresh") {
-                quotaStore.userVisibleRefresh()
+            Button(String(localized: "quota.refresh")) {
+                quotaStore.userVisibleRefresh(providerID: record.id)
             }
             .buttonStyle(SettingsButtonStyle())
 
             if let dashboardURL = record.dashboardURL, let url = URL(string: dashboardURL) {
-                Button("Open Dashboard") {
+                Button(String(localized: "quota.open_dashboard")) {
                     NSWorkspace.shared.open(url)
                 }
                 .buttonStyle(SettingsButtonStyle())
             }
 
             if let statusURL = record.statusURL, let url = URL(string: statusURL) {
-                Button("Open Status") {
+                Button(String(localized: "quota.open_status")) {
                     NSWorkspace.shared.open(url)
                 }
                 .buttonStyle(SettingsButtonStyle())
@@ -362,25 +366,25 @@ struct QuotaPanelView: View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("Quota")
+                    Text(String(localized: "quota.title"))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
 
                     Spacer()
 
-                    Button("Refresh") {
+                    Button(String(localized: "quota.refresh")) {
                         quotaStore.userVisibleRefresh()
                     }
                     .buttonStyle(SettingsButtonStyle())
 
-                    Button("Settings") {
+                    Button(String(localized: "quota.open_settings")) {
                         SettingsWindowController.show()
                     }
                     .buttonStyle(SettingsButtonStyle())
                 }
 
                 if quotaStore.orderedRecords.isEmpty {
-                    Text("No providers configured yet.")
+                    Text(String(localized: "quota.no_providers"))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.45))
                 } else {
@@ -526,10 +530,10 @@ private struct QuotaWindowCard: View {
             }
 
             if let resetsAt = window.resetsAt {
-                Text("Resets \(QuotaRuntimeSupport.relativeResetDescription(for: resetsAt))")
+                Text(String(format: String(localized: "quota.resets %@"), QuotaRuntimeSupport.relativeResetDescription(for: resetsAt)))
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.45))
-            }
+                }
         }
         .padding(12)
         .background(
@@ -559,7 +563,7 @@ private struct QuotaCreditsCard: View {
                 .foregroundColor(.white.opacity(0.85))
 
             if credits.isUnlimited {
-                Text("Unlimited")
+                Text(String(localized: "quota.unlimited"))
                     .font(.system(size: 12))
                     .foregroundColor(TerminalColors.green)
             } else {
@@ -571,7 +575,9 @@ private struct QuotaCreditsCard: View {
                 }
 
                 if let remaining = credits.remaining {
-                    Text(credits.currencyCode == "USD" ? String(format: "$%.2f remaining", remaining) : String(format: "%.0f remaining", remaining))
+                    Text(credits.currencyCode == "USD"
+                         ? String(format: String(localized: "quota.remaining_usd"), remaining)
+                         : String(format: String(localized: "quota.remaining_generic"), remaining))
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.45))
                 }
@@ -629,15 +635,15 @@ private struct QuotaStatusPill: View {
     private var statusText: String {
         switch status {
         case .connected:
-            return "Connected"
+            return String(localized: "quota.status.connected")
         case .needsConfiguration:
-            return "Setup"
+            return String(localized: "quota.status.setup")
         case .refreshing:
-            return "Refreshing"
+            return String(localized: "quota.status.refreshing")
         case .stale:
-            return "Stale"
+            return String(localized: "quota.status.stale")
         case .error:
-            return "Error"
+            return String(localized: "quota.status.error")
         }
     }
 
