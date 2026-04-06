@@ -16,6 +16,12 @@ class CodexSessionWatcher {
         let path: String
         var cwd: String
         var lastOffset: UInt64
+        var callMetadata: [String: CallMetadata]
+    }
+
+    private struct CallMetadata {
+        let toolName: String
+        let toolInput: [String: AnyCodable]?
     }
 
     private let logger = Logger(subsystem: "com.claudeisland", category: "CodexWatcher")
@@ -122,7 +128,8 @@ class CodexSessionWatcher {
         if let event = latestRelevantEvent(
             in: state.path,
             sessionId: entry.sessionId,
-            cwd: state.cwd
+            cwd: state.cwd,
+            callMetadata: &state.callMetadata
         ) {
             if state.cwd.isEmpty, !event.cwd.isEmpty {
                 state.cwd = event.cwd
@@ -151,7 +158,8 @@ class CodexSessionWatcher {
             in: state.path,
             fromOffset: state.lastOffset,
             sessionId: entry.sessionId,
-            cwd: state.cwd
+            cwd: state.cwd,
+            callMetadata: &state.callMetadata
         )
 
         if !result.cwd.isEmpty {
@@ -174,11 +182,12 @@ class CodexSessionWatcher {
         return TranscriptState(
             path: path,
             cwd: metadata?.cwd ?? "",
-            lastOffset: 0
+            lastOffset: 0,
+            callMetadata: [:]
         )
     }
 
-    private func latestRelevantEvent(in path: String, sessionId: String, cwd: String) -> HookEvent? {
+    private func latestRelevantEvent(in path: String, sessionId: String, cwd: String, callMetadata: inout [String: CallMetadata]) -> HookEvent? {
         guard let content = try? String(contentsOfFile: path, encoding: .utf8) else {
             return nil
         }
@@ -190,7 +199,7 @@ class CodexSessionWatcher {
             if let contextCwd = contextCwd(from: line), resolvedCwd.isEmpty {
                 resolvedCwd = contextCwd
             }
-            if let event = desktopEvent(from: line, sessionId: sessionId, cwd: resolvedCwd) {
+            if let event = desktopEvent(from: line, sessionId: sessionId, cwd: resolvedCwd, callMetadata: &callMetadata) {
                 if resolvedCwd.isEmpty, !event.cwd.isEmpty {
                     resolvedCwd = event.cwd
                 }
@@ -205,7 +214,8 @@ class CodexSessionWatcher {
         in path: String,
         fromOffset: UInt64,
         sessionId: String,
-        cwd: String
+        cwd: String,
+        callMetadata: inout [String: CallMetadata]
     ) -> (events: [HookEvent], nextOffset: UInt64, cwd: String) {
         guard let fileHandle = FileHandle(forReadingAtPath: path) else {
             return ([], fromOffset, cwd)
@@ -239,7 +249,7 @@ class CodexSessionWatcher {
             if let contextCwd = contextCwd(from: line), resolvedCwd.isEmpty {
                 resolvedCwd = contextCwd
             }
-            if let event = desktopEvent(from: line, sessionId: sessionId, cwd: resolvedCwd) {
+            if let event = desktopEvent(from: line, sessionId: sessionId, cwd: resolvedCwd, callMetadata: &callMetadata) {
                 if resolvedCwd.isEmpty, !event.cwd.isEmpty {
                     resolvedCwd = event.cwd
                 }
@@ -250,7 +260,7 @@ class CodexSessionWatcher {
         return (events, currentSize, resolvedCwd)
     }
 
-    private func desktopEvent(from line: String, sessionId: String, cwd: String) -> HookEvent? {
+    private func desktopEvent(from line: String, sessionId: String, cwd: String, callMetadata: inout [String: CallMetadata]) -> HookEvent? {
         guard let data = line.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String else {
@@ -260,7 +270,7 @@ class CodexSessionWatcher {
         if type == "response_item",
            let payload = json["payload"] as? [String: Any],
            let itemType = payload["type"] as? String {
-            return desktopResponseItemEvent(from: payload, itemType: itemType, sessionId: sessionId, cwd: cwd)
+            return desktopResponseItemEvent(from: payload, itemType: itemType, sessionId: sessionId, cwd: cwd, callMetadata: &callMetadata)
         }
 
         guard type == "event_msg",
@@ -327,6 +337,93 @@ class CodexSessionWatcher {
                 lastAssistantMessage: lastMessage
             )
 
+        case "agent_message":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "assistant_message",
+                message: payload["message"] as? String
+            )
+
+        case "turn_aborted":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "turn_aborted",
+                message: payload["reason"] as? String
+            )
+
+        case "thread_rolled_back":
+            let count = payload["num_turns"] as? Int
+            let message = count.map { "Thread rolled back \($0) turns" } ?? "Thread rolled back"
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "thread_rolled_back",
+                message: message
+            )
+
+        case "compaction":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "PreCompact",
+                status: "compacting",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "compaction",
+                message: payload["summary"] as? String
+            )
+
+        case "context_compacted", "compacted":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "PostCompact",
+                status: "waiting_for_input",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "compaction_complete",
+                message: payload["summary"] as? String
+            )
+
         default:
             return nil
         }
@@ -336,7 +433,8 @@ class CodexSessionWatcher {
         from payload: [String: Any],
         itemType: String,
         sessionId: String,
-        cwd: String
+        cwd: String,
+        callMetadata: inout [String: CallMetadata]
     ) -> HookEvent? {
         switch itemType {
         case "function_call":
@@ -346,6 +444,7 @@ class CodexSessionWatcher {
             }
 
             let toolInput = decodeToolInput(payload["arguments"])
+            callMetadata[callId] = CallMetadata(toolName: toolName, toolInput: toolInput)
 
             return HookEvent(
                 sessionId: sessionId,
@@ -367,6 +466,7 @@ class CodexSessionWatcher {
             guard let callId = payload["call_id"] as? String else {
                 return nil
             }
+            let metadata = callMetadata[callId]
 
             return HookEvent(
                 sessionId: sessionId,
@@ -377,8 +477,8 @@ class CodexSessionWatcher {
                 pid: nil,
                 tty: nil,
                 approvalChannel: .none,
-                tool: nil,
-                toolInput: nil,
+                tool: metadata?.toolName,
+                toolInput: metadata?.toolInput,
                 toolUseId: callId,
                 notificationType: nil,
                 message: nil,
@@ -392,6 +492,7 @@ class CodexSessionWatcher {
             }
 
             let toolInput = decodeToolInput(payload["input"])
+            callMetadata[callId] = CallMetadata(toolName: toolName, toolInput: toolInput)
 
             return HookEvent(
                 sessionId: sessionId,
@@ -413,6 +514,7 @@ class CodexSessionWatcher {
             guard let callId = payload["call_id"] as? String else {
                 return nil
             }
+            let metadata = callMetadata[callId]
 
             return HookEvent(
                 sessionId: sessionId,
@@ -423,12 +525,42 @@ class CodexSessionWatcher {
                 pid: nil,
                 tty: nil,
                 approvalChannel: .none,
-                tool: nil,
-                toolInput: nil,
+                tool: metadata?.toolName,
+                toolInput: metadata?.toolInput,
                 toolUseId: callId,
                 notificationType: nil,
                 message: nil,
                 toolResponse: extractCustomToolOutput(payload["output"])
+            )
+
+        case "message":
+            guard let role = payload["role"] as? String, role == "assistant",
+                  let content = payload["content"] as? [[String: Any]] else {
+                return nil
+            }
+
+            let text = content
+                .filter { ($0["type"] as? String) == "output_text" }
+                .compactMap { $0["text"] as? String }
+                .joined(separator: "\n")
+
+            guard !text.isEmpty else { return nil }
+
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: cwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "assistant_message",
+                message: text,
+                lastAssistantMessage: text
             )
 
         default:
