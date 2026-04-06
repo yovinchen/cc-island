@@ -645,7 +645,7 @@ struct ClineHookSource: HookSource {
             if [ -n "$RESPONSE" ]; then
               print -r -- "$RESPONSE"
             else
-              print -r -- '{"cancel":false}'
+              print -r -- '{"cancel":false,"contextModification":""}'
             fi
             """
             try script.write(to: hookURL, atomically: true, encoding: .utf8)

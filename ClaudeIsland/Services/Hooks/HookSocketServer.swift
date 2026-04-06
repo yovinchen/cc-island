@@ -640,7 +640,8 @@ class HookSocketServer {
     }
 
     /// Build Cline hook response format.
-    /// Cline pre-tool hooks use stdout JSON like {"cancel":true|false,"errorMessage":"..."}.
+    /// Cline hooks use stdout JSON like
+    /// {"cancel":true|false,"errorMessage":"...","contextModification":"..."}.
     private func buildClineResponse(decision: String, reason: String?) -> Data? {
         var response: [String: Any] = [
             "cancel": decision != "allow"
@@ -648,6 +649,8 @@ class HookSocketServer {
 
         if decision != "allow" {
             response["errorMessage"] = reason ?? "Cancelled by Claude Island"
+        } else if let reason, !reason.isEmpty {
+            response["contextModification"] = reason
         }
 
         return try? JSONSerialization.data(withJSONObject: response, options: [])
