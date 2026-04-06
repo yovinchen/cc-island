@@ -392,7 +392,8 @@ final class CrushLogWatcher {
         if lower == "http response",
            let status = firstString(json["status"]),
            let body = firstString(json["body"]),
-           let streamedText = firstStreamedText(in: body) {
+           let streamedText = firstStreamedText(in: body),
+           shouldSurfaceHTTPResponse(text: streamedText, body: body) {
             return "Crush HTTP response \(status): \(String(streamedText.prefix(220)))"
         }
         if lower == "http request failed",
@@ -431,6 +432,33 @@ final class CrushLogWatcher {
                         return text
                     }
                 }
+            }
+        }
+        return nil
+    }
+
+    private func shouldSurfaceHTTPResponse(text: String, body: String) -> Bool {
+        guard let promptTokenCount = firstPromptTokenCount(in: body) else { return true }
+        if promptTokenCount < 1_000 && text.count <= 80 {
+            return false
+        }
+        return true
+    }
+
+    private func firstPromptTokenCount(in body: String) -> Int? {
+        let lines = body.components(separatedBy: .newlines)
+        for line in lines where line.hasPrefix("data: ") {
+            let payload = String(line.dropFirst(6))
+            guard let data = payload.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let usage = json["usageMetadata"] as? [String: Any] else {
+                continue
+            }
+            if let count = usage["promptTokenCount"] as? Int {
+                return count
+            }
+            if let count = usage["promptTokenCount"] as? NSNumber {
+                return count.intValue
             }
         }
         return nil
