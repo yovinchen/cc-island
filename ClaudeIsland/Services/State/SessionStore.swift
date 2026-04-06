@@ -236,6 +236,8 @@ actor SessionStore {
             let rateLimitsDict = rateLimits.reduce(into: [String: Any]()) { partialResult, entry in
                 partialResult[entry.key] = entry.value.value
             }
+            session.usageData = UsageData.applying(rateLimits: rateLimitsDict, to: session.usageData)
+            sessions[sessionId] = session
             await MainActor.run {
                 UsageDataManager.shared.updateFromHookEvent(
                     sessionId: sessionId,
@@ -267,6 +269,22 @@ actor SessionStore {
                 .path
             if FileManager.default.fileExists(atPath: path) {
                 return "Project Gemini config detected at .gemini/settings.json; it may override your user-level hooks."
+            }
+            return nil
+        case .windsurf:
+            let path = URL(fileURLWithPath: cwd)
+                .appendingPathComponent(".windsurf/hooks.json")
+                .path
+            if FileManager.default.fileExists(atPath: path) {
+                return "Workspace Windsurf hooks config detected at .windsurf/hooks.json; it may override or extend your user-level hooks."
+            }
+            return nil
+        case .copilot:
+            let path = URL(fileURLWithPath: cwd)
+                .appendingPathComponent(".github/hooks/hooks.json")
+                .path
+            if FileManager.default.fileExists(atPath: path) {
+                return "Project Copilot hooks config detected at .github/hooks/hooks.json; it may override your user-level hooks."
             }
             return nil
         case .crush:
