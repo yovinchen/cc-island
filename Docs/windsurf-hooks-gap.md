@@ -52,7 +52,8 @@ Windsurf **现已完成首版接入**。当前版本先覆盖用户级 hooks 安
 **最小实现方案**
 1. 已新增 `SessionSource.windsurf` 和 `WindsurfHookSource`。
 2. 当前已补更完整的 event -> 统一事件映射，包括 `post_read_code`、`pre_mcp_tool_use`、`post_mcp_tool_use`、`post_cascade_response_with_transcript`、`post_setup_worktree`。
-3. 下一步再决定是否把 pre-hook 阻塞接到 Notch 审批，以及是否要把 workspace 级 `.windsurf/hooks.json` 纳入更深的诊断/托管。
+3. 当前运行时已会检测 workspace 级 `.windsurf/hooks.json`，并提示它可能覆盖或扩展用户级 hooks。
+4. 下一步再决定是否把 pre-hook 阻塞接到 Notch 审批，以及是否要把 workspace 级 `.windsurf/hooks.json` 纳入更深的托管。
 
 **主要阻塞**
 - 当前主要阻塞已经从“没有 source”转成“是否要支持审批返回和更多 Windsurf 事件类型”。
