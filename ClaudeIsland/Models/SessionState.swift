@@ -10,6 +10,7 @@ import Foundation
 
 enum SessionSource: String, Codable, CaseIterable, Sendable {
     case claude
+    case cline
     case codexCLI = "codex_cli"
     case codexDesktop = "codex_desktop"
     case cursor
@@ -35,6 +36,8 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
         switch rawSource.lowercased() {
         case "claude":
             self = .claude
+        case "cline":
+            self = .cline
         case "codex", "codex_cli":
             self = .codexCLI
         case "codex_desktop":
@@ -72,6 +75,7 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
     var displayName: String {
         switch self {
         case .claude: return "Claude"
+        case .cline: return "Cline"
         case .codexCLI: return "Codex CLI"
         case .codexDesktop: return "Codex Desktop"
         case .cursor: return "Cursor"

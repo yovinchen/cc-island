@@ -45,9 +45,11 @@ enum EventMapper {
             payload["pid"] = getppid()
         }
 
-        // Cursor-specific: infer tool name and input from event-specific fields
+        // Source-specific: infer tool name/input/prompt from event-specific fields
         if source == "cursor" {
             applyCursorFields(input: input, eventName: eventName, payload: &payload)
+        } else if source == "cline" {
+            applyClineFields(input: input, eventName: eventName, payload: &payload)
         } else if source == "windsurf" {
             applyWindsurfFields(input: input, eventName: eventName, payload: &payload)
         }
@@ -169,19 +171,25 @@ enum EventMapper {
             input["hookEventName"],
             input["event"],
             input["type"],
+            input["hookName"],
             input["agent_action_name"],
             input["notification_type"],
             input["notificationType"]
-        ) ?? "unknown"
+        ) ?? detectClineEventName(from: input) ?? "unknown"
     }
 
     private static func extractSessionId(from input: [String: Any]) -> String {
         return firstString(
             input["session_id"],
             input["sessionId"],
+            input["taskId"],
             input["thread_id"],
             input["threadId"],
             nested(input, "session", "id"),
+            nested(input, "taskStart", "taskId"),
+            nested(input, "taskResume", "taskId"),
+            nested(input, "taskComplete", "taskId"),
+            nested(input, "taskCancel", "taskId"),
             input["trajectory_id"],
             input["execution_id"],
             input["conversation_id"],   // Cursor: conversation_id as session grouping
@@ -206,12 +214,17 @@ enum EventMapper {
         if let roots = input["workspace_roots"] as? [String], let first = roots.first {
             return first
         }
+        if let roots = input["workspaceRoots"] as? [String], let first = roots.first {
+            return first
+        }
         return FileManager.default.currentDirectoryPath
     }
 
     private static func extractToolName(from input: [String: Any]) -> String? {
         if let name = input["tool_name"] as? String { return name }
         if let name = input["toolName"] as? String { return name }
+        if let name = nested(input, "preToolUse", "tool") as? String { return name }
+        if let name = nested(input, "postToolUse", "tool") as? String { return name }
         if let name = nested(input, "tool_info", "tool_name") as? String { return name }
         if let name = nested(input, "tool_info", "toolName") as? String { return name }
         if let name = nested(input, "toolResult", "toolName") as? String { return name }
@@ -266,6 +279,19 @@ enum EventMapper {
             ]
 
             if let mapped = geminiAliases[key] {
+                return mapped
+            }
+        }
+
+        if source?.lowercased() == "cline" {
+            let clineAliases: [String: String] = [
+                "taskstart": "SessionStart",
+                "taskresume": "SessionStart",
+                "taskcomplete": "Stop",
+                "taskcancel": "Stop",
+            ]
+
+            if let mapped = clineAliases[key] {
                 return mapped
             }
         }
@@ -499,7 +525,83 @@ enum EventMapper {
         }
     }
 
+    private static func applyClineFields(input: [String: Any], eventName: String, payload: inout [String: Any]) {
+        let key = eventName.lowercased()
+
+        switch key {
+        case "taskstart", "taskresume":
+            if let task = firstString(nested(input, "taskStart", "task"), nested(input, "taskResume", "task")) {
+                payload["message"] = task
+            }
+            if let taskId = firstString(nested(input, "taskStart", "taskId"), nested(input, "taskResume", "taskId")) {
+                payload["session_id"] = taskId
+            }
+
+        case "userpromptsubmit":
+            if let prompt = firstString(nested(input, "userPromptSubmit", "prompt")) {
+                payload["prompt"] = prompt
+            }
+
+        case "pretooluse":
+            if let tool = firstString(nested(input, "preToolUse", "tool")) {
+                payload["tool"] = tool
+            }
+            if let parameters = nested(input, "preToolUse", "parameters") {
+                payload["tool_input"] = parameters
+            }
+
+        case "posttooluse":
+            if let tool = firstString(nested(input, "postToolUse", "tool")) {
+                payload["tool"] = tool
+            }
+            if let parameters = nested(input, "postToolUse", "parameters") {
+                payload["tool_input"] = parameters
+            }
+            if let result = nested(input, "postToolUse", "result") {
+                payload["tool_response"] = stringify(result)
+            }
+            if let success = nested(input, "postToolUse", "success") as? Bool {
+                payload["message"] = success ? "Tool completed" : "Tool failed"
+            }
+
+        case "precompact":
+            if let trigger = firstString(nested(input, "preCompact", "trigger")) {
+                payload["message"] = trigger
+            }
+
+        case "taskcomplete", "taskcancel":
+            if let task = firstString(nested(input, "taskComplete", "task"), nested(input, "taskCancel", "task")) {
+                payload["message"] = task
+            }
+            if let taskId = firstString(nested(input, "taskComplete", "taskId"), nested(input, "taskCancel", "taskId")) {
+                payload["session_id"] = taskId
+            }
+
+        default:
+            break
+        }
+
+        if let roots = input["workspaceRoots"] as? [String], let first = roots.first {
+            payload["cwd"] = first
+        }
+    }
+
     // MARK: - Helpers
+
+    private static func detectClineEventName(from input: [String: Any]) -> String? {
+        let clineKeys = [
+            "taskStart",
+            "taskResume",
+            "userPromptSubmit",
+            "preToolUse",
+            "postToolUse",
+            "preCompact",
+            "taskComplete",
+            "taskCancel",
+        ]
+
+        return clineKeys.first { input[$0] != nil }
+    }
 
     private static func firstString(_ values: Any?...) -> String? {
         for value in values {
@@ -739,6 +841,7 @@ enum EventMapper {
         "TMUX", "TMUX_PANE", "KITTY_WINDOW_ID", "__CFBundleIdentifier",
         "CONDUCTOR_WORKSPACE_NAME", "CONDUCTOR_PORT", "CURSOR_TRACE_ID",
         "CMUX_WORKSPACE_ID", "CMUX_SURFACE_ID", "CMUX_SOCKET_PATH",
+        "AMP_SETTINGS_FILE", "CLINE_DIR",
     ]
 
     private static func collectEnv() -> [String: String] {

@@ -19,7 +19,7 @@ struct HookSetupView: View {
     @State private var installComplete: Bool = false
 
     private let allTools: [SessionSource] = [
-        .claude, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
+        .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
         .ampCLI, .opencode, .copilot,
         .qoder, .droid, .codebuddy
     ]
@@ -274,6 +274,7 @@ struct ToolSetupRow: View {
     private func configDescription(for source: SessionSource) -> String {
         switch source {
         case .claude: return "~/.claude/settings.json"
+        case .cline: return "~/Documents/Cline/Hooks + ~/.cline/data/globalState.json"
         case .codexCLI: return "~/.codex/hooks.json + ~/.codex/config.toml"
         case .gemini: return "~/.gemini/settings.json or .gemini/settings.json"
         case .cursor: return "~/.cursor/hooks.json or .cursor/hooks.json"

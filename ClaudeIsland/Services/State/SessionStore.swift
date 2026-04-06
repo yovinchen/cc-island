@@ -143,6 +143,10 @@ actor SessionStore {
         if let eventEnv = event.env {
             session.env = eventEnv
         }
+        if let diagnostic = environmentDiagnosticMessage(for: event.source, env: session.env),
+           session.hookMessage == nil {
+            session.hookMessage = diagnostic
+        }
         session.lastActivity = Date()
 
         // Store hook-level content fields for UI display
@@ -253,6 +257,25 @@ actor SessionStore {
                 .path
             if FileManager.default.fileExists(atPath: path) {
                 return "Project Gemini config detected at .gemini/settings.json; it may override your user-level hooks."
+            }
+            return nil
+        default:
+            return nil
+        }
+    }
+
+    private func environmentDiagnosticMessage(for source: SessionSource, env: [String: String]?) -> String? {
+        guard let env else { return nil }
+
+        switch source {
+        case .ampCLI:
+            if let settingsFile = env["AMP_SETTINGS_FILE"], !settingsFile.isEmpty {
+                return "Custom Amp settings file detected via AMP_SETTINGS_FILE; the default ~/.config/amp plugin path may not be the active config."
+            }
+            return nil
+        case .cline:
+            if let customDir = env["CLINE_DIR"], !customDir.isEmpty {
+                return "Custom Cline config directory detected via CLINE_DIR; Claude Island currently manages the default Cline hook locations."
             }
             return nil
         default:

@@ -222,7 +222,7 @@ struct HookStatusSection: View {
     @State private var autoRepairEnabled: Bool = AppSettings.autoRepairHooks
 
     private let managedSources: [SessionSource] = [
-        .claude, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
+        .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
         .ampCLI, .opencode, .copilot,
         .qoder, .droid, .codebuddy
     ]

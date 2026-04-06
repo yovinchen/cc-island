@@ -39,6 +39,8 @@ struct SourceIcon: View {
         switch source {
         case .claude:
             ClaudeCrabIcon(size: size, animateLegs: animateLegs)
+        case .cline:
+            OpenCodePixelIcon(size: size)
         case .codexCLI, .codexDesktop:
             CodexPixelIcon(size: size)
         case .cursor:

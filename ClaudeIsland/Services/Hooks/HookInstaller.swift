@@ -41,6 +41,7 @@ struct HookInstaller {
 
     private static let allSources: [HookSource] = [
         ClaudeHookSource(),
+        ClineHookSource(),
         CodexHookSource(),
         GeminiHookSource(),
         CursorHookSource(),
@@ -214,6 +215,14 @@ struct HookInstaller {
         // Claude: check ~/.claude directory
         if fm.fileExists(atPath: "\(home)/.claude") {
             installed.append(.claude)
+        }
+
+        // Cline: check ~/.cline, ~/Documents/Cline, or common executable locations
+        if fm.fileExists(atPath: "\(home)/.cline") ||
+           fm.fileExists(atPath: "\(home)/Documents/Cline") ||
+           fm.fileExists(atPath: "/usr/local/bin/cline") ||
+           fm.fileExists(atPath: "/opt/homebrew/bin/cline") {
+            installed.append(.cline)
         }
 
         // Codex: check ~/.codex directory
@@ -548,6 +557,110 @@ struct ClaudeHookSource: HookSource {
             options: [.prettyPrinted, .sortedKeys]
         ) {
             try? data.write(to: settingsURL)
+        }
+    }
+}
+
+// MARK: - Cline Hook Source
+
+struct ClineHookSource: HookSource {
+    private static let hookNames = [
+        "TaskStart",
+        "TaskResume",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "PreCompact",
+        "TaskComplete",
+        "TaskCancel",
+    ]
+
+    var sourceType: SessionSource { .cline }
+    var displayName: String { "Cline" }
+
+    var configPath: String { globalStateURL.path }
+
+    var managedConfigPaths: [String] {
+        [globalStateURL.path] + Self.hookNames.map { hooksDirectoryURL.appendingPathComponent($0).path }
+    }
+
+    private var hooksDirectoryURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Documents/Cline/Hooks")
+    }
+
+    private var globalStateURL: URL {
+        let env = Foundation.ProcessInfo.processInfo.environment
+        if let customDir = env["CLINE_DIR"], !customDir.isEmpty {
+            return URL(fileURLWithPath: customDir).appendingPathComponent("data/globalState.json")
+        }
+
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cline/data/globalState.json")
+    }
+
+    func install(bridgePath: String) throws {
+        try FileManager.default.createDirectory(at: hooksDirectoryURL, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: globalStateURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        let command = HookInstaller.hookCommandPath() + " --source cline"
+
+        for hookName in Self.hookNames {
+            let hookURL = hooksDirectoryURL.appendingPathComponent(hookName)
+            let script = """
+            #!/bin/zsh
+            \(command) >/dev/null 2>&1 || true
+            print -r -- '{"cancel":false}'
+            """
+            try script.write(to: hookURL, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hookURL.path)
+        }
+
+        updateGlobalState()
+    }
+
+    func uninstall() throws {
+        for path in managedConfigPaths.dropFirst() {
+            try? FileManager.default.removeItem(atPath: path)
+        }
+    }
+
+    func isInstalled() -> Bool {
+        guard hooksEnabledInGlobalState() else { return false }
+
+        return Self.hookNames.allSatisfy { hookName in
+            let path = hooksDirectoryURL.appendingPathComponent(hookName).path
+            guard FileManager.default.isExecutableFile(atPath: path),
+                  let content = try? String(contentsOfFile: path, encoding: .utf8) else {
+                return false
+            }
+            return content.contains("--source cline")
+        }
+    }
+
+    private func hooksEnabledInGlobalState() -> Bool {
+        guard let data = try? Data(contentsOf: globalStateURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return false
+        }
+
+        return json["hooks-enabled"] as? Bool == true
+    }
+
+    private func updateGlobalState() {
+        var json: [String: Any] = [:]
+        if let data = try? Data(contentsOf: globalStateURL),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            json = existing
+        }
+
+        json["hooks-enabled"] = true
+
+        if let data = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: globalStateURL)
         }
     }
 }
