@@ -353,9 +353,9 @@ Claude Island App (NotchView)
 - **官方文档**: [docs.github.com/en/copilot/reference/hooks-configuration](https://docs.github.com/en/copilot/reference/hooks-configuration)
 - **配置文件**: `~/.copilot/config.json`（用户级）或 `.github/hooks/hooks.json`（项目级）
 - **格式**: JSON，`hooks` 对象下按事件名分组
-- **原生事件名**: sessionStart, sessionEnd, userPromptSubmitted, preToolUse, stop
-- **Claude Island 映射**: `sessionStart`, `sessionEnd`, `toolUse`, `stop`（4 个事件）
-- **注意**: Copilot 支持 preToolUse 但当前只注册了 `toolUse`（合并 pre/post）；不支持 PermissionRequest
+- **原生事件名**: `sessionStart`, `sessionEnd`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `postToolUseFailure`, `errorOccurred`, `preCompact`, `stop`
+- **Claude Island 映射**: 已接入 `preToolUse` 隐式审批、`postToolUseFailure`、`errorOccurred`、`preCompact`
+- **注意**: 当前仍未实现 `modifiedArgs`，项目级 `.github/hooks/` 也还未托管
 
 #### Droid (Factory) ✅ 支持
 

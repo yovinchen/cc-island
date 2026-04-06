@@ -82,6 +82,9 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 
 **改进方案**: 支持扫描和注入项目级 `.github/hooks/` 目录中的配置文件。
 
+**本地代码补充**:
+- 当前 `CopilotHookSource` 已开始为 `preToolUse` 写入 `timeoutSec = 120`，与当前隐式审批等待窗口对齐。
+
 ---
 
 ### 6. preToolUse 返回值处理 (低优先级)
