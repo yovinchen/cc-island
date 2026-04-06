@@ -372,6 +372,23 @@ class CodexSessionWatcher {
                 rateLimits: anyCodableMap(payload["rate_limits"])
             )
 
+        case "item_completed":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "item_completed",
+                message: itemCompletedSummary(from: payload)
+            )
+
         case "turn_aborted":
             return HookEvent(
                 sessionId: sessionId,
@@ -618,17 +635,46 @@ class CodexSessionWatcher {
 
         let planType = rateLimits["plan_type"] as? String
         let limitId = rateLimits["limit_id"] as? String
+        let primaryUsed = (rateLimits["primary"] as? [String: Any])?["used_percent"] as? Double
+        let secondaryUsed = (rateLimits["secondary"] as? [String: Any])?["used_percent"] as? Double
 
-        if let planType, let limitId {
-            return "Codex Desktop token update (\(limitId), \(planType))"
+        var parts: [String] = []
+
+        if let limitId {
+            parts.append(limitId)
         }
         if let planType {
-            return "Codex Desktop token update (\(planType))"
+            parts.append(planType)
         }
-        if let limitId {
-            return "Codex Desktop token update (\(limitId))"
+        if let primaryUsed {
+            parts.append("primary \(Int(primaryUsed))%")
         }
-        return "Codex Desktop token update"
+        if let secondaryUsed {
+            parts.append("secondary \(Int(secondaryUsed))%")
+        }
+
+        if parts.isEmpty {
+            return "Codex Desktop token update"
+        }
+
+        return "Codex Desktop token update (\(parts.joined(separator: ", ")))"
+    }
+
+    private func itemCompletedSummary(from payload: [String: Any]) -> String? {
+        guard let item = payload["item"] as? [String: Any] else {
+            return payload["text"] as? String
+        }
+
+        let itemType = item["type"] as? String ?? "item"
+        let text = (item["text"] as? String)?
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let text, !text.isEmpty {
+            return "\(itemType): \(String(text.prefix(160)))"
+        }
+
+        return "Completed \(itemType)"
     }
 
     private func extractCustomToolOutput(_ raw: Any?) -> String? {
