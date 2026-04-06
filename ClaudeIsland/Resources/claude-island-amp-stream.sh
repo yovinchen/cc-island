@@ -84,7 +84,7 @@ trap cleanup EXIT
 send_event "{\"hook_event_name\":\"SessionStart\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON}"
 send_event "{\"hook_event_name\":\"UserPromptSubmit\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"prompt\":$PROMPT_JSON}"
 
-PARSER='import json, pathlib, subprocess, sys
+PARSER='import json, pathlib, re, subprocess, sys
 last_path = pathlib.Path(sys.argv[1])
 stream_path = pathlib.Path(sys.argv[2])
 bridge = sys.argv[3]
@@ -94,6 +94,7 @@ last_text = ""
 tool_calls = {}
 seen_pre = set()
 seen_post = set()
+ansi_re = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 def send(payload):
     if not bridge:
@@ -122,7 +123,7 @@ def stringify_content(value):
     return json.dumps(value, ensure_ascii=False)
 
 for raw in stream_path.read_text().splitlines():
-    raw = raw.strip()
+    raw = ansi_re.sub("", raw).strip()
     if not raw:
         continue
     try:
