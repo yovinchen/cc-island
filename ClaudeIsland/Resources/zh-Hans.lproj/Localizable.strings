@@ -19,7 +19,7 @@
 "settings.tab.general" = "通用";
 "settings.tab.hooks" = "Hooks";
 "settings.tab.sound" = "声音";
-"settings.tab.usage" = "使用量与额度";
+"settings.tab.usage" = "提供方";
 "settings.tab.diagnostics" = "诊断";
 
 /* Settings Sections */
@@ -49,9 +49,9 @@
 "settings.sound.notification" = "通知声音";
 
 /* Usage Settings */
-"settings.usage.title" = "使用量与额度";
+"settings.usage.title" = "提供方";
 "settings.usage.show_desc" = "在刘海栏头部显示会话使用量环";
-"settings.usage.detail" = "刘海栏头部继续显示会话使用量环，账号额度详情则在完整的额度面板中查看。";
+"settings.usage.detail" = "在同一工作区中管理 provider 状态、额度刷新、凭据与会话使用量环显示。";
 
 /* Quota */
 "quota.title" = "额度";
@@ -72,6 +72,8 @@
 "quota.info.organization" = "组织";
 "quota.info.plan" = "套餐";
 "quota.info.detail" = "详情";
+"quota.info.version" = "版本";
+"quota.info.status" = "状态";
 "quota.unknown" = "未知";
 "quota.credential" = "凭据";
 "quota.save_key" = "保存密钥";
@@ -90,11 +92,25 @@
 "quota.source.cli" = "CLI";
 "quota.source.local" = "本地";
 "quota.source.web" = "网页";
+"quota.source_mode_hint" = "选择这个 provider 刷新时优先使用的数据来源。";
+"quota.session_rings" = "会话用量环";
 "quota.zai_region" = "z.ai 区域";
+"quota.zai_region_hint" = "切换 z.ai 额度查询所使用的 API 区域。";
 "quota.opencode_workspace" = "OpenCode 工作区";
+"quota.opencode_workspace_hint" = "当自动识别出的计费工作区不正确时，可在这里指定工作区 ID。";
 "quota.opencode_workspace_placeholder" = "wrk_... 或工作区 URL";
 "quota.save_workspace" = "保存工作区";
 "quota.clear_workspace" = "清除工作区";
+"quota.usage" = "用量";
+"quota.disabled" = "已禁用";
+"quota.no_usage" = "还没有用量快照。";
+"quota.needs_configuration" = "首次刷新前需要先完成配置。";
+"quota.last_fetch_failed" = "最近一次获取失败。";
+"quota.not_detected" = "未检测到";
+"quota.detected" = "已检测到";
+"quota.detected_manual" = "已配置手动凭据";
+"quota.no_reset_detected" = "未检测到重置时间";
+"quota.never_updated" = "从未更新";
 "quota.notes" = "备注";
 "quota.last_error" = "最近错误";
 "quota.resets %@" = "重置于 %@";
@@ -106,6 +122,8 @@
 "quota.status.refreshing" = "刷新中";
 "quota.status.stale" = "已过期";
 "quota.status.error" = "错误";
+"quota.status.inline" = "根据最近一次 provider 刷新结果推断";
+"quota.status.page_available" = "可打开状态页查看";
 
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "诊断日志";

@@ -10,67 +10,104 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @State private var selectedTab = 0
+    @State private var selectedTab: SettingsTab = .providers
 
     var body: some View {
-        HSplitView {
-            // Sidebar
-            VStack(alignment: .leading, spacing: 2) {
-                settingsTab(icon: "gearshape", label: String(localized: "settings.tab.general"), index: 0)
-                settingsTab(icon: "link", label: String(localized: "settings.tab.hooks"), index: 1)
-                settingsTab(icon: "speaker.wave.2", label: String(localized: "settings.tab.sound"), index: 2)
-                settingsTab(icon: "chart.bar", label: String(localized: "settings.tab.usage"), index: 3)
-                settingsTab(icon: "doc.text.magnifyingglass", label: String(localized: "settings.tab.diagnostics"), index: 4)
-                Spacer()
-            }
-            .frame(width: 160)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 8)
-            .background(Color.black.opacity(0.3))
+        VStack(spacing: 0) {
+            settingsHeader
 
-            // Content
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    switch selectedTab {
-                    case 0: generalTab
-                    case 1: hooksTab
-                    case 2: soundTab
-                    case 3: usageTab
-                    case 4: diagnosticsTab
-                    default: generalTab
+            Divider()
+                .background(Color.white.opacity(0.08))
+
+            Group {
+                if selectedTab == .providers {
+                    providersTab
+                        .padding(.horizontal, 26)
+                        .padding(.vertical, 24)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            tabContent
+                        }
+                        .padding(.horizontal, 26)
+                        .padding(.vertical, 24)
+                        .frame(maxWidth: 920, alignment: .leading)
                     }
                 }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(minWidth: 560, minHeight: 400)
+        .frame(minWidth: 920, minHeight: 620)
         .background(Color(nsColor: NSColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1.0)))
     }
 
-    // MARK: - Tab Button
+    private var settingsHeader: some View {
+        VStack(spacing: 18) {
+            Text(selectedTab.title)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white.opacity(0.84))
 
-    private func settingsTab(icon: String, label: String, index: Int) -> some View {
-        Button {
-            selectedTab = index
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12))
-                    .frame(width: 16)
-                Text(label)
-                    .font(.system(size: 13, weight: .medium))
-                Spacer()
+            HStack(spacing: 18) {
+                ForEach(SettingsTab.allCases) { tab in
+                    settingsTopTab(tab)
+                }
             }
-            .foregroundColor(selectedTab == index ? .white : .white.opacity(0.6))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 18)
+        .padding(.bottom, 20)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.04),
+                    Color.white.opacity(0.02),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private func settingsTopTab(_ tab: SettingsTab) -> some View {
+        Button {
+            selectedTab = tab
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 26, weight: .medium))
+                    .frame(width: 32, height: 32)
+
+                Text(tab.label)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .frame(width: 110, height: 92)
+            .foregroundColor(selectedTab == tab ? TerminalColors.blue : .white.opacity(0.55))
             .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(selectedTab == index ? Color.white.opacity(0.12) : Color.clear)
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(selectedTab == tab ? Color.white.opacity(0.07) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(selectedTab == tab ? Color.white.opacity(0.12) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch selectedTab {
+        case .general:
+            generalTab
+        case .hooks:
+            hooksTab
+        case .sound:
+            soundTab
+        case .providers:
+            providersTab
+        case .diagnostics:
+            diagnosticsTab
+        }
     }
 
     // MARK: - General Tab
@@ -137,7 +174,7 @@ struct SettingsView: View {
     // MARK: - Usage Tab
 
     @ViewBuilder
-    private var usageTab: some View {
+    private var providersTab: some View {
         QuotaSettingsPane()
     }
 
@@ -189,6 +226,48 @@ struct SettingsView: View {
             .foregroundColor(.white.opacity(0.8))
             .padding(.bottom, 4)
     }
+}
+
+private enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case hooks
+    case sound
+    case providers
+    case diagnostics
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .general:
+            return "gearshape"
+        case .hooks:
+            return "link"
+        case .sound:
+            return "speaker.wave.2"
+        case .providers:
+            return "square.grid.2x2"
+        case .diagnostics:
+            return "doc.text.magnifyingglass"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .general:
+            return String(localized: "settings.tab.general")
+        case .hooks:
+            return String(localized: "settings.tab.hooks")
+        case .sound:
+            return String(localized: "settings.tab.sound")
+        case .providers:
+            return String(localized: "settings.tab.usage")
+        case .diagnostics:
+            return String(localized: "settings.tab.diagnostics")
+        }
+    }
+
+    var title: String { label }
 }
 
 // MARK: - Reusable Settings Components

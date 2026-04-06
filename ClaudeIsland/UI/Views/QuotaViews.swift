@@ -20,23 +20,17 @@ struct QuotaSettingsPane: View {
         quotaStore.record(for: selectedProviderID) ?? quotaStore.orderedRecords.first
     }
 
-    private var headerRecords: [QuotaProviderRecord] {
-        quotaStore.headerRecords(limit: 3)
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                SettingsToggle(
-                    label: String(localized: "settings.usage.show_desc"),
-                    getter: { AppSettings.showUsageData },
-                    setter: { AppSettings.showUsageData = $0 }
-                )
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text(String(localized: "settings.usage.detail"))
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(0.5))
 
                 Spacer()
 
                 if let refreshedAt = quotaStore.lastGlobalRefreshAt {
-                    Text(String(format: String(localized: "quota.updated_at %@" ), refreshedAt.formatted(date: .omitted, time: .shortened)))
+                    Text(relativeText(for: refreshedAt))
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.45))
                 }
@@ -47,32 +41,16 @@ struct QuotaSettingsPane: View {
                 .buttonStyle(SettingsButtonStyle())
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(String(localized: "quota.overview"))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.8))
+            HStack(alignment: .top, spacing: 24) {
+                providerListPanel
+                    .frame(width: 360)
+                    .frame(maxHeight: .infinity)
 
-                if headerRecords.isEmpty {
-                    Text(String(localized: "quota.empty"))
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.45))
-                } else {
-                    HStack(spacing: 10) {
-                        ForEach(headerRecords) { record in
-                            QuotaOverviewCard(record: record)
-                        }
-                    }
-                }
-            }
-
-            HSplitView {
-                quotaSidebar
-                    .frame(minWidth: 190, idealWidth: 210, maxWidth: 230)
-
-                quotaDetail
+                providerDetailPanel
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             quotaStore.refreshIfNeeded(maxAge: 60)
             ensureSelection()
@@ -89,89 +67,94 @@ struct QuotaSettingsPane: View {
         }
     }
 
-    private var quotaSidebar: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(quotaStore.orderedRecords) { record in
-                    Button {
-                        selectedProviderID = record.id
-                    } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: record.descriptor.id.systemImageName)
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.7))
-                                .frame(width: 16, height: 16)
+    private var providerListPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(String(localized: "settings.tab.usage"))
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.88))
 
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack(spacing: 6) {
-                                    Text(record.displayName)
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.85))
-                                    QuotaStatusPill(status: record.status)
-                                }
+                Spacer()
 
-                                Text(record.summaryLine)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.white.opacity(0.45))
-                                    .lineLimit(2)
-                            }
+                Text("\(quotaStore.orderedRecords.count)")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundColor(.white.opacity(0.45))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
 
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 9)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(record.id == selectedProviderID ? Color.white.opacity(0.12) : Color.white.opacity(0.04))
-                        )
+            Divider()
+                .background(Color.white.opacity(0.08))
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(quotaStore.orderedRecords) { record in
+                        providerListRow(for: record)
                     }
-                    .buttonStyle(.plain)
                 }
             }
+            .padding(18)
         }
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color.white.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
-    private var quotaDetail: some View {
+    private var providerDetailPanel: some View {
         if let record = selectedRecord {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 28) {
+                    HStack(alignment: .top, spacing: 16) {
+                        QuotaProviderBrandIcon(providerID: record.id, size: 34)
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text(record.displayName)
-                                .font(.system(size: 20, weight: .semibold))
+                                .font(.system(size: 22, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.9))
-                            Text(record.descriptor.credentialHint)
-                                .font(.system(size: 12))
+                            Text(providerHeaderSubtitle(for: record))
+                                .font(.system(size: 13))
                                 .foregroundColor(.white.opacity(0.45))
                         }
 
                         Spacer()
 
-                        Toggle(
-                            "",
-                            isOn: Binding(
-                                get: { record.isEnabled },
-                                set: { quotaStore.setEnabled($0, for: record.id) }
+                        HStack(spacing: 12) {
+                            Button {
+                                quotaStore.userVisibleRefresh(providerID: record.id)
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 15, weight: .medium))
+                            }
+                            .buttonStyle(SettingsButtonStyle())
+
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { record.isEnabled },
+                                    set: { quotaStore.setEnabled($0, for: record.id) }
+                                )
                             )
-                        )
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .tint(TerminalColors.green)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(TerminalColors.blue)
+                        }
                     }
 
-                    quotaInfoGrid(for: record)
-
-                    if let primaryWindow = record.snapshot?.primaryWindow {
-                        QuotaWindowCard(window: primaryWindow)
-                    }
-
-                    if let secondaryWindow = record.snapshot?.secondaryWindow {
-                        QuotaWindowCard(window: secondaryWindow)
-                    }
+                    providerFactsSection(for: record)
+                    providerUsageSection(for: record)
 
                     if let credits = record.snapshot?.credits {
-                        QuotaCreditsCard(credits: credits)
+                        quotaTextBlock(title: credits.label, text: creditsSummaryText(credits), color: .white.opacity(0.75))
                     }
 
                     if let note = record.snapshot?.note, !note.isEmpty {
@@ -182,26 +165,9 @@ struct QuotaSettingsPane: View {
                         quotaTextBlock(title: String(localized: "quota.last_error"), text: error, color: TerminalColors.red)
                     }
 
-                    if record.supportsSourceSelection || record.supportsCLIConfiguration {
-                        quotaConfiguration(for: record)
-                    }
-
-                    if record.descriptor.supportsManualSecret {
-                        quotaSecretEditor(for: record)
-                    } else {
-                        quotaSetupGuide(for: record)
-                    }
-
-                    if record.id == .zai {
-                        quotaZAIRegionPicker
-                    }
-
-                    if record.id == .opencode {
-                        quotaOpenCodeWorkspaceEditor
-                    }
-
-                    quotaActions(for: record)
+                    providerSettingsSection(for: record)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, 8)
             }
         } else {
@@ -210,82 +176,142 @@ struct QuotaSettingsPane: View {
         }
     }
 
-    private func quotaInfoGrid(for record: QuotaProviderRecord) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            QuotaInfoRow(label: String(localized: "quota.info.state"), value: record.statusText)
-            QuotaInfoRow(label: String(localized: "quota.info.source"), value: record.effectiveSourceLabel)
-            QuotaInfoRow(label: String(localized: "quota.info.updated"), value: record.lastUpdatedText)
-            QuotaInfoRow(label: String(localized: "quota.info.account"), value: record.accountText ?? String(localized: "quota.unknown"))
-            if let organization = record.organizationText {
-                QuotaInfoRow(label: String(localized: "quota.info.organization"), value: organization)
-            }
-            if let plan = record.planText {
-                QuotaInfoRow(label: String(localized: "quota.info.plan"), value: plan)
-            }
-            if let detail = record.detailText {
-                QuotaInfoRow(label: String(localized: "quota.info.detail"), value: detail)
-            }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
-    }
+    private func providerListRow(for record: QuotaProviderRecord) -> some View {
+        let isSelected = record.id == selectedProviderID
 
-    private func quotaSecretEditor(for record: QuotaProviderRecord) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "quota.credential"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
+        return HStack(alignment: .top, spacing: 12) {
+            ProviderGripHandle()
+                .padding(.top, 18)
 
-            SecureField(record.credentialPlaceholder, text: $secretValue)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.06))
+            QuotaProviderBrandIcon(providerID: record.id, size: 22)
+                .padding(.top, 14)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(record.displayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.92))
+
+                    Circle()
+                        .fill(color(for: record.status))
+                        .frame(width: 10, height: 10)
+                }
+
+                Text(providerRowPrimaryText(for: record))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.72))
+
+                Text(providerRowSecondaryText(for: record))
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.54))
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { record.isEnabled },
+                    set: { quotaStore.setEnabled($0, for: record.id) }
                 )
-                .foregroundColor(.white.opacity(0.9))
+            )
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .tint(TerminalColors.blue)
+            .padding(.top, 10)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(
+                    isSelected
+                    ? LinearGradient(
+                        colors: [
+                            TerminalColors.blue.opacity(0.95),
+                            Color(red: 0.07, green: 0.36, blue: 0.86),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    : LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.03),
+                            Color.white.opacity(0.02),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(isSelected ? Color.white.opacity(0.08) : Color.white.opacity(0.04), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 18))
+        .onTapGesture {
+            selectedProviderID = record.id
+        }
+    }
 
-            HStack(spacing: 10) {
-                Button(String(localized: "quota.save_key")) {
-                    quotaStore.saveSecret(secretValue, for: record.id)
-                    quotaStore.userVisibleRefresh(providerID: record.id)
-                }
-                .buttonStyle(SettingsButtonStyle())
+    private func providerFactsSection(for record: QuotaProviderRecord) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(String(localized: "quota.overview"))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.92))
 
-                Button(String(localized: "quota.clear_key")) {
-                    secretValue = ""
-                    quotaStore.saveSecret("", for: record.id)
+            VStack(alignment: .leading, spacing: 10) {
+                QuotaInfoRow(label: String(localized: "quota.info.state"), value: record.statusText)
+                QuotaInfoRow(label: String(localized: "quota.info.source"), value: record.effectiveSourceLabel)
+                QuotaInfoRow(label: String(localized: "quota.info.updated"), value: providerUpdatedText(for: record))
+                QuotaInfoRow(label: String(localized: "quota.info.account"), value: record.accountText ?? String(localized: "quota.unknown"))
+                if let organization = record.organizationText {
+                    QuotaInfoRow(label: String(localized: "quota.info.organization"), value: organization)
                 }
-                .buttonStyle(SettingsButtonStyle(isDestructive: true))
+                if let plan = record.planText {
+                    QuotaInfoRow(label: String(localized: "quota.info.plan"), value: plan)
+                }
+                if let detail = record.detailText {
+                    QuotaInfoRow(label: String(localized: "quota.info.detail"), value: detail)
+                }
+                QuotaInfoRow(label: String(localized: "quota.info.version"), value: providerDetectionText(for: record))
+                QuotaInfoRow(label: String(localized: "quota.info.status"), value: providerServiceStatusText(for: record))
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
     }
 
-    private func quotaSetupGuide(for record: QuotaProviderRecord) -> some View {
-        quotaTextBlock(title: String(localized: "quota.setup"), text: record.descriptor.credentialHint, color: .white.opacity(0.7))
+    private func providerUsageSection(for record: QuotaProviderRecord) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(String(localized: "quota.usage"))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.92))
+
+            let windows = providerUsageRows(for: record)
+            if windows.isEmpty {
+                Text(String(localized: "quota.no_usage"))
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.45))
+                    .padding(.top, 2)
+            } else {
+                VStack(alignment: .leading, spacing: 18) {
+                    ForEach(Array(windows.enumerated()), id: \.offset) { _, window in
+                        ProviderUsageRow(window: window)
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
     }
 
-    private func quotaConfiguration(for record: QuotaProviderRecord) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func providerSettingsSection(for record: QuotaProviderRecord) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
             Text(String(localized: "quota.configuration"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.92))
 
             if record.supportsSourceSelection {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(String(localized: "quota.source_mode"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
-
+                providerSettingsBlock(title: String(localized: "quota.source_mode"), caption: String(localized: "quota.source_mode_hint")) {
                     Picker(
                         String(localized: "quota.source_mode"),
                         selection: Binding(
@@ -302,25 +328,41 @@ struct QuotaSettingsPane: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .frame(maxWidth: 260)
                 }
             }
 
+            providerSettingsBlock(
+                title: String(localized: "quota.session_rings"),
+                caption: String(localized: "settings.usage.show_desc")
+            ) {
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { AppSettings.showUsageData },
+                        set: { AppSettings.showUsageData = $0 }
+                    )
+                )
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(TerminalColors.blue)
+            }
+
             if let cliBinaryName = record.descriptor.cliBinaryName {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(String(localized: "quota.cli_binary"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                providerSettingsBlock(
+                    title: String(localized: "quota.cli_binary"),
+                    caption: String(format: String(localized: "quota.cli_binary_hint %@"), cliBinaryName)
+                ) {
+                    EmptyView()
+                }
 
-                    Text(String(format: String(localized: "quota.cli_binary_hint %@"), cliBinaryName))
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.45))
-
+                VStack(alignment: .leading, spacing: 10) {
                     TextField(String(localized: "quota.cli_binary_placeholder"), text: $cliBinaryPath)
                         .textFieldStyle(.plain)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 12)
                                 .fill(Color.white.opacity(0.06))
                         )
                         .foregroundColor(.white.opacity(0.9))
@@ -344,125 +386,266 @@ struct QuotaSettingsPane: View {
                     }
                 }
             }
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
-    }
 
-    private var quotaZAIRegionPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "quota.zai_region"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
+            if record.descriptor.supportsManualSecret {
+                providerSettingsBlock(title: String(localized: "quota.credential"), caption: record.descriptor.credentialHint) {
+                    EmptyView()
+                }
 
-            Picker(
-                String(localized: "quota.zai_region"),
-                selection: Binding(
-                    get: { QuotaPreferences.zaiRegion },
-                    set: { newValue in
-                        QuotaPreferences.zaiRegion = newValue
-                        if let selectedRecord {
-                            quotaStore.userVisibleRefresh(providerID: selectedRecord.id)
-                        } else {
-                            quotaStore.userVisibleRefresh()
+                VStack(alignment: .leading, spacing: 10) {
+                    SecureField(record.credentialPlaceholder, text: $secretValue)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.06))
+                        )
+                        .foregroundColor(.white.opacity(0.9))
+
+                    HStack(spacing: 10) {
+                        Button(String(localized: "quota.save_key")) {
+                            quotaStore.saveSecret(secretValue, for: record.id)
+                            quotaStore.userVisibleRefresh(providerID: record.id)
+                        }
+                        .buttonStyle(SettingsButtonStyle())
+
+                        Button(String(localized: "quota.clear_key")) {
+                            secretValue = ""
+                            quotaStore.saveSecret("", for: record.id)
+                            quotaStore.userVisibleRefresh(providerID: record.id)
+                        }
+                        .buttonStyle(SettingsButtonStyle(isDestructive: true))
+                    }
+                }
+            } else {
+                providerSettingsBlock(title: String(localized: "quota.setup"), caption: record.descriptor.credentialHint) {
+                    EmptyView()
+                }
+            }
+
+            if record.id == .opencode {
+                providerSettingsBlock(
+                    title: String(localized: "quota.opencode_workspace"),
+                    caption: String(localized: "quota.opencode_workspace_hint")
+                ) {
+                    EmptyView()
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField(String(localized: "quota.opencode_workspace_placeholder"), text: $openCodeWorkspaceID)
+                        .textFieldStyle(.plain)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.white.opacity(0.06))
+                        )
+                        .foregroundColor(.white.opacity(0.9))
+
+                    HStack(spacing: 10) {
+                        Button(String(localized: "quota.save_workspace")) {
+                            QuotaPreferences.openCodeWorkspaceID = openCodeWorkspaceID.trimmingCharacters(in: .whitespacesAndNewlines)
+                            quotaStore.userVisibleRefresh(providerID: record.id)
+                        }
+                        .buttonStyle(SettingsButtonStyle())
+
+                        Button(String(localized: "quota.clear_workspace")) {
+                            openCodeWorkspaceID = ""
+                            QuotaPreferences.openCodeWorkspaceID = ""
+                            quotaStore.userVisibleRefresh(providerID: record.id)
+                        }
+                        .buttonStyle(SettingsButtonStyle(isDestructive: true))
+                    }
+                }
+            }
+
+            if record.id == .zai {
+                providerSettingsBlock(title: String(localized: "quota.zai_region"), caption: String(localized: "quota.zai_region_hint")) {
+                    Picker(
+                        String(localized: "quota.zai_region"),
+                        selection: Binding(
+                            get: { QuotaPreferences.zaiRegion },
+                            set: { newValue in
+                                QuotaPreferences.zaiRegion = newValue
+                                quotaStore.userVisibleRefresh(providerID: record.id)
+                            }
+                        )
+                    ) {
+                        ForEach(QuotaZAIRegion.allCases, id: \.rawValue) { region in
+                            Text(region.displayName).tag(region)
                         }
                     }
-                )
-            ) {
-                ForEach(QuotaZAIRegion.allCases, id: \.rawValue) { region in
-                    Text(region.displayName).tag(region)
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 320)
                 }
             }
-            .pickerStyle(.segmented)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
-    }
-
-    private func quotaActions(for record: QuotaProviderRecord) -> some View {
-        HStack(spacing: 10) {
-            Button(String(localized: "quota.refresh")) {
-                quotaStore.userVisibleRefresh(providerID: record.id)
-            }
-            .buttonStyle(SettingsButtonStyle())
-
-            if let dashboardURL = record.dashboardURL, let url = URL(string: dashboardURL) {
-                Button(String(localized: "quota.open_dashboard")) {
-                    NSWorkspace.shared.open(url)
-                }
-                .buttonStyle(SettingsButtonStyle())
-            }
-
-            if let statusURL = record.statusURL, let url = URL(string: statusURL) {
-                Button(String(localized: "quota.open_status")) {
-                    NSWorkspace.shared.open(url)
-                }
-                .buttonStyle(SettingsButtonStyle())
-            }
-        }
-    }
-
-    private var quotaOpenCodeWorkspaceEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(String(localized: "quota.opencode_workspace"))
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
-
-            TextField(String(localized: "quota.opencode_workspace_placeholder"), text: $openCodeWorkspaceID)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.06))
-                )
-                .foregroundColor(.white.opacity(0.9))
 
             HStack(spacing: 10) {
-                Button(String(localized: "quota.save_workspace")) {
-                    QuotaPreferences.openCodeWorkspaceID = openCodeWorkspaceID.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if let selectedRecord {
-                        quotaStore.userVisibleRefresh(providerID: selectedRecord.id)
+                if let dashboardURL = record.dashboardURL, let url = URL(string: dashboardURL) {
+                    Button(String(localized: "quota.open_dashboard")) {
+                        NSWorkspace.shared.open(url)
                     }
+                    .buttonStyle(SettingsButtonStyle())
                 }
-                .buttonStyle(SettingsButtonStyle())
 
-                Button(String(localized: "quota.clear_workspace")) {
-                    openCodeWorkspaceID = ""
-                    QuotaPreferences.openCodeWorkspaceID = ""
+                if let statusURL = record.statusURL, let url = URL(string: statusURL) {
+                    Button(String(localized: "quota.open_status")) {
+                        NSWorkspace.shared.open(url)
+                    }
+                    .buttonStyle(SettingsButtonStyle())
                 }
-                .buttonStyle(SettingsButtonStyle(isDestructive: true))
             }
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
+    }
+
+    private func providerSettingsBlock<Content: View>(title: String, caption: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.88))
+
+                Spacer()
+
+                content()
+            }
+
+            if !caption.isEmpty {
+                Text(caption)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.45))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func quotaTextBlock(title: String, text: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.92))
 
             Text(text)
-                .font(.system(size: 12))
+                .font(.system(size: 13))
                 .foregroundColor(color)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.05))
-        )
+        .padding(.top, 2)
+    }
+
+    private func providerUsageRows(for record: QuotaProviderRecord) -> [QuotaWindow] {
+        var windows: [QuotaWindow] = []
+        if let primary = record.snapshot?.primaryWindow {
+            windows.append(primary)
+        }
+        if let secondary = record.snapshot?.secondaryWindow {
+            windows.append(secondary)
+        }
+        return windows
+    }
+
+    private func providerHeaderSubtitle(for record: QuotaProviderRecord) -> String {
+        "\(record.effectiveSourceLabel.lowercased()) • \(providerUpdatedText(for: record))"
+    }
+
+    private func providerUpdatedText(for record: QuotaProviderRecord) -> String {
+        if let updatedAt = record.snapshot?.updatedAt ?? record.diagnostics.lastSuccessAt {
+            return relativeText(for: updatedAt)
+        }
+        return String(localized: "quota.never_updated")
+    }
+
+    private func providerDetectionText(for record: QuotaProviderRecord) -> String {
+        if let cliBinaryName = record.descriptor.cliBinaryName {
+            if let override = QuotaRuntimeSupport.cleaned(QuotaPreferences.cliBinaryPath(for: record.id)), !override.isEmpty {
+                return override
+            }
+            if let resolved = QuotaRuntimeSupport.resolvedBinary(defaultBinary: cliBinaryName, providerID: record.id) {
+                return resolved
+            }
+            return String(localized: "quota.not_detected")
+        }
+
+        if record.descriptor.supportsManualSecret {
+            return quotaStore.storedSecret(for: record.id).isEmpty
+                ? String(localized: "quota.not_detected")
+                : String(localized: "quota.detected_manual")
+        }
+
+        if record.isConfigured {
+            return String(localized: "quota.detected")
+        }
+        return String(localized: "quota.not_detected")
+    }
+
+    private func providerServiceStatusText(for record: QuotaProviderRecord) -> String {
+        record.statusURL == nil
+            ? String(localized: "quota.status.inline")
+            : String(localized: "quota.status.page_available")
+    }
+
+    private func providerRowPrimaryText(for record: QuotaProviderRecord) -> String {
+        if record.isEnabled {
+            return record.effectiveSourceLabel.lowercased()
+        }
+        return "\(String(localized: "quota.disabled")) — \(record.effectiveSourceLabel.lowercased())"
+    }
+
+    private func providerRowSecondaryText(for record: QuotaProviderRecord) -> String {
+        if let error = record.latestErrorText, !error.isEmpty {
+            return error
+        }
+        if record.snapshot != nil {
+            return providerUpdatedText(for: record)
+        }
+        if record.status == .needsConfiguration {
+            return String(localized: "quota.needs_configuration")
+        }
+        if record.status == .stale {
+            return String(localized: "quota.last_fetch_failed")
+        }
+        return String(localized: "quota.no_usage")
+    }
+
+    private func creditsSummaryText(_ credits: QuotaCredits) -> String {
+        if credits.isUnlimited {
+            return String(localized: "quota.unlimited")
+        }
+        if let used = credits.used, let total = credits.total, total > 0 {
+            if let remaining = credits.remaining {
+                return String(format: "%.2f / %.2f • %.2f left", used, total, remaining)
+            }
+            return String(format: "%.2f / %.2f", used, total)
+        }
+        if let remaining = credits.remaining {
+            if credits.currencyCode == "USD" {
+                return String(format: String(localized: "quota.remaining_usd"), remaining)
+            }
+            return String(format: String(localized: "quota.remaining_generic"), remaining)
+        }
+        return String(localized: "quota.unknown")
+    }
+
+    private func relativeText(for date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private func color(for status: QuotaProviderStatus) -> Color {
+        switch status {
+        case .connected:
+            return TerminalColors.green
+        case .needsConfiguration:
+            return TerminalColors.blue
+        case .refreshing:
+            return TerminalColors.cyan
+        case .stale:
+            return TerminalColors.amber
+        case .error:
+            return TerminalColors.red
+        }
     }
 
     private func ensureSelection() {
@@ -650,6 +833,134 @@ private struct QuotaCompactCard: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.white.opacity(0.05))
         )
+    }
+}
+
+private struct QuotaProviderBrandIcon: View {
+    let providerID: QuotaProviderID
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if let source = mappedSource {
+                SourceIcon(source: source, size: size)
+            } else {
+                Image(systemName: providerID.systemImageName)
+                    .font(.system(size: size * 0.82, weight: .medium))
+                    .foregroundColor(.white.opacity(0.78))
+                    .frame(width: size, height: size)
+            }
+        }
+    }
+
+    private var mappedSource: SessionSource? {
+        switch providerID {
+        case .codex:
+            return .codexCLI
+        case .claude:
+            return .claude
+        case .gemini:
+            return .gemini
+        case .copilot:
+            return .copilot
+        case .cursor:
+            return .cursor
+        case .opencode:
+            return .opencode
+        case .amp:
+            return .ampCLI
+        case .kimi:
+            return .kimiCLI
+        case .kiro:
+            return .kiroCLI
+        case .kimiK2:
+            return .kimiCLI
+        case .augment, .jetbrains, .openrouter, .warp, .zai:
+            return nil
+        }
+    }
+}
+
+private struct ProviderGripHandle: View {
+    var body: some View {
+        VStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { _ in
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.white.opacity(0.22))
+                        .frame(width: 3.5, height: 3.5)
+                    Circle()
+                        .fill(Color.white.opacity(0.22))
+                        .frame(width: 3.5, height: 3.5)
+                }
+            }
+        }
+        .frame(width: 14, height: 20)
+    }
+}
+
+private struct ProviderUsageRow: View {
+    let window: QuotaWindow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(window.label)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white.opacity(0.9))
+
+            ProviderUsageProgressBar(progress: window.clampedUsedRatio)
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(Int(window.clampedUsedRatio * 100))% used")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.white.opacity(0.65))
+
+                Spacer()
+
+                if let resetsAt = window.resetsAt {
+                    Text(String(format: String(localized: "quota.resets %@"), resetsAt.formatted(date: .abbreviated, time: .shortened)))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.52))
+                } else {
+                    Text(String(localized: "quota.no_reset_detected"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+            }
+
+            if let detail = window.detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.45))
+            }
+        }
+    }
+}
+
+private struct ProviderUsageProgressBar: View {
+    let progress: Double
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(Color.white.opacity(0.08))
+
+                RoundedRectangle(cornerRadius: 5)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                TerminalColors.blue.opacity(0.95),
+                                Color(red: 0.11, green: 0.46, blue: 0.96),
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(8, geometry.size.width * min(max(progress, 0), 1)))
+            }
+        }
+        .frame(height: 10)
     }
 }
 

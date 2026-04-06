@@ -23,7 +23,7 @@ class SettingsWindowController: NSWindowController {
         let hostingController = NSHostingController(rootView: settingsView)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 1080, height: 760),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -32,7 +32,7 @@ class SettingsWindowController: NSWindowController {
         window.contentViewController = hostingController
         window.center()
         window.setFrameAutosaveName("ClaudeIslandSettings")
-        window.minSize = NSSize(width: 560, height: 400)
+        window.minSize = NSSize(width: 920, height: 620)
         window.isReleasedWhenClosed = false
         window.titlebarAppearsTransparent = true
         window.backgroundColor = NSColor(red: 0.08, green: 0.08, blue: 0.08, alpha: 1.0)

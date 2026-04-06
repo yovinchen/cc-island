@@ -19,7 +19,7 @@
 "settings.tab.general" = "General";
 "settings.tab.hooks" = "Hooks";
 "settings.tab.sound" = "Sound";
-"settings.tab.usage" = "Usage & Quota";
+"settings.tab.usage" = "Providers";
 "settings.tab.diagnostics" = "Diagnostics";
 
 /* Settings Sections */
@@ -49,9 +49,9 @@
 "settings.sound.notification" = "Notification Sound";
 
 /* Usage Settings */
-"settings.usage.title" = "Usage & Quota";
+"settings.usage.title" = "Providers";
 "settings.usage.show_desc" = "Show session usage rings in notch header";
-"settings.usage.detail" = "Session usage rings remain in the notch header, while provider quota details now live in the full quota pane.";
+"settings.usage.detail" = "Manage provider status, quota refresh, credentials, and session-ring visibility in one workspace.";
 
 /* Quota */
 "quota.title" = "Quota";
@@ -72,6 +72,8 @@
 "quota.info.organization" = "Organization";
 "quota.info.plan" = "Plan";
 "quota.info.detail" = "Detail";
+"quota.info.version" = "Version";
+"quota.info.status" = "Status";
 "quota.unknown" = "Unknown";
 "quota.credential" = "Credential";
 "quota.save_key" = "Save Key";
@@ -90,11 +92,25 @@
 "quota.source.cli" = "CLI";
 "quota.source.local" = "Local";
 "quota.source.web" = "Web";
+"quota.source_mode_hint" = "Choose which source should drive refreshes for this provider.";
+"quota.session_rings" = "Session Rings";
 "quota.zai_region" = "z.ai region";
+"quota.zai_region_hint" = "Switch the API region used for z.ai quota lookups.";
 "quota.opencode_workspace" = "OpenCode workspace";
+"quota.opencode_workspace_hint" = "Use an explicit workspace ID when the automatic billing workspace lookup is not the one you want.";
 "quota.opencode_workspace_placeholder" = "wrk_... or workspace URL";
 "quota.save_workspace" = "Save Workspace";
 "quota.clear_workspace" = "Clear Workspace";
+"quota.usage" = "Usage";
+"quota.disabled" = "Disabled";
+"quota.no_usage" = "No usage snapshot yet.";
+"quota.needs_configuration" = "Configuration required before the first refresh.";
+"quota.last_fetch_failed" = "Last fetch failed.";
+"quota.not_detected" = "Not detected";
+"quota.detected" = "Detected";
+"quota.detected_manual" = "Manual credential configured";
+"quota.no_reset_detected" = "No reset detected";
+"quota.never_updated" = "Never updated";
 "quota.notes" = "Notes";
 "quota.last_error" = "Last Error";
 "quota.resets %@" = "Resets %@";
@@ -106,6 +122,8 @@
 "quota.status.refreshing" = "Refreshing";
 "quota.status.stale" = "Stale";
 "quota.status.error" = "Error";
+"quota.status.inline" = "Derived from latest provider refresh";
+"quota.status.page_available" = "Status page available";
 
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "Diagnostic Log";
