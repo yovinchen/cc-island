@@ -32,6 +32,7 @@ final class QuotaSupportTests: XCTestCase {
                 source: .apiKey,
                 primaryWindow: nil,
                 secondaryWindow: nil,
+                tertiaryWindow: nil,
                 credits: QuotaCredits(
                     label: "Credits",
                     used: nil,

@@ -105,6 +105,13 @@ struct CursorQuotaProvider: QuotaProvider {
             resetsAt: billingCycleEnd
         )
 
+        let tertiaryWindow = quotaWindow(
+            label: "API",
+            usedRatio: apiPercent,
+            detail: autoPercent.map { "Auto \(Int($0 * 100))%" },
+            resetsAt: billingCycleEnd
+        )
+
         let onDemandUsed = Double(summary.individualUsage?.onDemand?.used ?? 0) / 100.0
         let onDemandLimit = summary.individualUsage?.onDemand?.limit.map { Double($0) / 100.0 }
         let teamOnDemandUsed = summary.teamUsage?.onDemand?.used.map { Double($0) / 100.0 }
@@ -125,6 +132,7 @@ struct CursorQuotaProvider: QuotaProvider {
             source: .web,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: tertiaryWindow,
             credits: nil,
             identity: QuotaIdentity(
                 email: userInfo?.email,
@@ -242,6 +250,7 @@ struct OpenCodeQuotaProvider: QuotaProvider {
                 detail: nil,
                 resetsAt: usage.updatedAt.addingTimeInterval(TimeInterval(usage.weeklyResetInSec))
             ),
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -550,6 +559,7 @@ struct AmpQuotaProvider: QuotaProvider {
                 resetsAt: resetsAt
             ),
             secondaryWindow: nil,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -752,6 +762,7 @@ struct AugmentQuotaProvider: QuotaProvider {
                 resetsAt: billingCycleEnd
             ),
             secondaryWindow: nil,
+            tertiaryWindow: nil,
             credits: QuotaCredits(
                 label: "Credits",
                 used: credits.creditsUsed,

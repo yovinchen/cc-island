@@ -520,6 +520,7 @@ struct CodexQuotaProvider: QuotaProvider {
             source: .oauth,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: response.credits.map {
                 QuotaCredits(
                     label: "Credits",
@@ -584,6 +585,7 @@ struct CodexQuotaProvider: QuotaProvider {
             source: .cli,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: limits.credits.map {
                 QuotaCredits(
                     label: "Credits",
@@ -837,6 +839,9 @@ struct ClaudeQuotaProvider: QuotaProvider {
         let primaryWindow = response.fiveHour.flatMap { makeWindow(label: descriptor.primaryLabel, window: $0) }
         let weeklyWindow = response.sevenDay ?? response.sevenDaySonnet ?? response.sevenDayOpus
         let secondaryWindow = weeklyWindow.flatMap { makeWindow(label: descriptor.secondaryLabel ?? "Weekly", window: $0) }
+        let tertiarySource = response.sevenDayOpus ?? response.sevenDaySonnet
+        let tertiaryLabel = response.sevenDayOpus != nil ? "Opus" : "Sonnet"
+        let tertiaryWindow = tertiarySource.flatMap { makeWindow(label: tertiaryLabel, window: $0) }
 
         var noteParts: [String] = []
         if let sonnet = response.sevenDaySonnet?.utilization {
@@ -858,6 +863,7 @@ struct ClaudeQuotaProvider: QuotaProvider {
             source: .oauth,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: tertiaryWindow,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -1176,6 +1182,14 @@ struct GeminiQuotaProvider: QuotaProvider {
         let secondaryWindow = (flashBucket ?? flashLiteBucket).flatMap {
             makeWindow(label: descriptor.secondaryLabel ?? "Flash", bucket: $0)
         }
+        let tertiaryWindow: QuotaWindow? = {
+            guard let bucket = flashLiteBucket,
+                  bucket.modelId != (flashBucket ?? flashLiteBucket)?.modelId
+            else {
+                return nil
+            }
+            return makeWindow(label: "Flash Lite", bucket: bucket)
+        }()
 
         let flashLiteNote: String? = {
             guard let flashLiteBucket,
@@ -1192,6 +1206,7 @@ struct GeminiQuotaProvider: QuotaProvider {
             source: .oauth,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: tertiaryWindow,
             credits: nil,
             identity: QuotaIdentity(
                 email: QuotaUtilities.emailFromJWT(credentials.idToken),
@@ -1288,6 +1303,7 @@ struct KiroQuotaProvider: QuotaProvider {
             source: .cli,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: QuotaCredits(
                 label: "Credits",
                 used: snapshot.creditsUsed,

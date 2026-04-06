@@ -42,20 +42,20 @@ struct SettingsView: View {
     }
 
     private var settingsHeader: some View {
-        VStack(spacing: 18) {
+        VStack(spacing: 12) {
             Text(selectedTab.title)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white.opacity(0.84))
 
-            HStack(spacing: 18) {
+            HStack(spacing: 14) {
                 ForEach(SettingsTab.allCases) { tab in
                     settingsTopTab(tab)
                 }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 18)
-        .padding(.bottom, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 12)
         .background(
             LinearGradient(
                 colors: [
@@ -74,20 +74,20 @@ struct SettingsView: View {
         } label: {
             VStack(spacing: 8) {
                 Image(systemName: tab.icon)
-                    .font(.system(size: 26, weight: .medium))
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: 22, weight: .medium))
+                    .frame(width: 26, height: 26)
 
                 Text(tab.label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
             }
-            .frame(width: 110, height: 92)
+            .frame(width: 88, height: 72)
             .foregroundColor(selectedTab == tab ? TerminalColors.blue : .white.opacity(0.55))
             .background(
-                RoundedRectangle(cornerRadius: 18)
+                RoundedRectangle(cornerRadius: 16)
                     .fill(selectedTab == tab ? Color.white.opacity(0.07) : Color.clear)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 18)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(selectedTab == tab ? Color.white.opacity(0.12) : Color.clear, lineWidth: 1)
             )
         }

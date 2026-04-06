@@ -194,6 +194,7 @@ struct QuotaSnapshot: Equatable, Sendable {
     let source: QuotaSourceKind
     let primaryWindow: QuotaWindow?
     let secondaryWindow: QuotaWindow?
+    let tertiaryWindow: QuotaWindow?
     let credits: QuotaCredits?
     let identity: QuotaIdentity?
     let updatedAt: Date

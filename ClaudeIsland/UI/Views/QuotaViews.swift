@@ -43,7 +43,7 @@ struct QuotaSettingsPane: View {
 
             HStack(alignment: .top, spacing: 24) {
                 providerListPanel
-                    .frame(width: 360)
+                    .frame(width: 320)
                     .frame(maxHeight: .infinity)
 
                 providerDetailPanel
@@ -71,21 +71,21 @@ struct QuotaSettingsPane: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(String(localized: "settings.tab.usage"))
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white.opacity(0.88))
 
                 Spacer()
 
                 Text("\(quotaStore.orderedRecords.count)")
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .foregroundColor(.white.opacity(0.45))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background(Color.white.opacity(0.06))
                     .clipShape(Capsule())
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 18)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 14)
 
             Divider()
                 .background(Color.white.opacity(0.08))
@@ -97,7 +97,7 @@ struct QuotaSettingsPane: View {
                     }
                 }
             }
-            .padding(18)
+            .padding(14)
         }
         .background(
             RoundedRectangle(cornerRadius: 24)
@@ -114,15 +114,15 @@ struct QuotaSettingsPane: View {
         if let record = selectedRecord {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    HStack(alignment: .top, spacing: 16) {
-                        QuotaProviderBrandIcon(providerID: record.id, size: 34)
+                    HStack(alignment: .top, spacing: 14) {
+                        QuotaProviderBrandIcon(providerID: record.id, size: 28)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(record.displayName)
-                                .font(.system(size: 22, weight: .semibold))
+                                .font(.system(size: 18, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.9))
                             Text(providerHeaderSubtitle(for: record))
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundColor(.white.opacity(0.45))
                         }
 
@@ -181,15 +181,15 @@ struct QuotaSettingsPane: View {
 
         return HStack(alignment: .top, spacing: 12) {
             ProviderGripHandle()
-                .padding(.top, 18)
+                .padding(.top, 12)
 
-            QuotaProviderBrandIcon(providerID: record.id, size: 22)
-                .padding(.top, 14)
+            QuotaProviderBrandIcon(providerID: record.id, size: 18)
+                .padding(.top, 10)
 
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     Text(record.displayName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(.white.opacity(0.92))
 
                     Circle()
@@ -198,11 +198,11 @@ struct QuotaSettingsPane: View {
                 }
 
                 Text(providerRowPrimaryText(for: record))
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: 10.5, weight: .medium))
                     .foregroundColor(.white.opacity(0.72))
 
                 Text(providerRowSecondaryText(for: record))
-                    .font(.system(size: 11))
+                    .font(.system(size: 10.5))
                     .foregroundColor(.white.opacity(0.54))
                     .lineLimit(2)
             }
@@ -219,10 +219,10 @@ struct QuotaSettingsPane: View {
             .labelsHidden()
             .toggleStyle(.switch)
             .tint(TerminalColors.blue)
-            .padding(.top, 10)
+            .padding(.top, 7)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 18)
                 .fill(
@@ -258,7 +258,7 @@ struct QuotaSettingsPane: View {
     private func providerFactsSection(for record: QuotaProviderRecord) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(String(localized: "quota.overview"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.92))
 
             VStack(alignment: .leading, spacing: 10) {
@@ -284,7 +284,7 @@ struct QuotaSettingsPane: View {
     private func providerUsageSection(for record: QuotaProviderRecord) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(String(localized: "quota.usage"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.92))
 
             let windows = providerUsageRows(for: record)
@@ -307,7 +307,7 @@ struct QuotaSettingsPane: View {
     private func providerSettingsSection(for record: QuotaProviderRecord) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(String(localized: "quota.configuration"))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.92))
 
             if record.supportsSourceSelection {
@@ -523,7 +523,7 @@ struct QuotaSettingsPane: View {
     private func quotaTextBlock(title: String, text: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.92))
 
             Text(text)
@@ -542,6 +542,9 @@ struct QuotaSettingsPane: View {
         if let secondary = record.snapshot?.secondaryWindow {
             windows.append(secondary)
         }
+        if let tertiary = record.snapshot?.tertiaryWindow {
+            windows.append(tertiary)
+        }
         return windows
     }
 
@@ -558,11 +561,8 @@ struct QuotaSettingsPane: View {
 
     private func providerDetectionText(for record: QuotaProviderRecord) -> String {
         if let cliBinaryName = record.descriptor.cliBinaryName {
-            if let override = QuotaRuntimeSupport.cleaned(QuotaPreferences.cliBinaryPath(for: record.id)), !override.isEmpty {
-                return override
-            }
             if let resolved = QuotaRuntimeSupport.resolvedBinary(defaultBinary: cliBinaryName, providerID: record.id) {
-                return resolved
+                return QuotaRuntimeSupport.detectVersion(binaryPath: resolved) ?? resolved
             }
             return String(localized: "quota.not_detected")
         }
@@ -815,6 +815,10 @@ private struct QuotaCompactCard: View {
 
             if let secondary = record.snapshot?.secondaryWindow {
                 QuotaWindowCard(window: secondary)
+            }
+
+            if let tertiary = record.snapshot?.tertiaryWindow {
+                QuotaWindowCard(window: tertiary)
             }
 
             if let credits = record.snapshot?.credits {

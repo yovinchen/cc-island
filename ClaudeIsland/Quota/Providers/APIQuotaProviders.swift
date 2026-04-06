@@ -135,6 +135,7 @@ struct OpenRouterQuotaProvider: QuotaProvider {
             source: .apiKey,
             primaryWindow: primaryWindow,
             secondaryWindow: nil,
+            tertiaryWindow: nil,
             credits: QuotaCredits(
                 label: "Credits",
                 used: credits.totalUsage,
@@ -301,6 +302,7 @@ struct WarpQuotaProvider: QuotaProvider {
             source: .apiKey,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -420,6 +422,7 @@ struct KimiK2QuotaProvider: QuotaProvider {
                 resetsAt: nil
             ),
             secondaryWindow: nil,
+            tertiaryWindow: nil,
             credits: credits,
             identity: QuotaIdentity(
                 email: nil,
@@ -590,6 +593,7 @@ struct ZAIQuotaProvider: QuotaProvider {
             source: .apiKey,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,

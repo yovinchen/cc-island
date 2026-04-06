@@ -141,6 +141,7 @@ struct CopilotQuotaProvider: QuotaProvider {
             source: .apiKey,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -243,6 +244,7 @@ struct KimiQuotaProvider: QuotaProvider {
             source: .apiKey,
             primaryWindow: primaryWindow,
             secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,
@@ -521,6 +523,7 @@ struct JetBrainsQuotaProvider: QuotaProvider {
             source: .local,
             primaryWindow: primaryWindow,
             secondaryWindow: nil,
+            tertiaryWindow: nil,
             credits: nil,
             identity: QuotaIdentity(
                 email: nil,

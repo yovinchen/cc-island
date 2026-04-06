@@ -34,6 +34,26 @@ enum QuotaRuntimeSupport {
         return which(overrideValue)
     }
 
+    static func detectVersion(binaryPath: String, argumentVariants: [[String]] = [["--version"], ["version"], ["-v"]]) -> String? {
+        for arguments in argumentVariants {
+            switch ProcessExecutor.shared.runSync(binaryPath, arguments: arguments) {
+            case .success(let output):
+                let cleanedOutput = stripANSI(output)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if let line = cleanedOutput
+                    .split(whereSeparator: \.isNewline)
+                    .map({ String($0).trimmingCharacters(in: .whitespacesAndNewlines) })
+                    .first(where: { !$0.isEmpty })
+                {
+                    return line
+                }
+            case .failure:
+                continue
+            }
+        }
+        return nil
+    }
+
     static func envValue(_ keys: [String], fallback: String? = nil) -> String? {
         let environment = Foundation.ProcessInfo.processInfo.environment
         for key in keys {

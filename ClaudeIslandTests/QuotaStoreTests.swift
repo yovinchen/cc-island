@@ -51,6 +51,7 @@ final class QuotaStoreTests: XCTestCase {
                     resetsAt: nil
                 ),
                 secondaryWindow: nil,
+                tertiaryWindow: nil,
                 credits: nil,
                 identity: nil,
                 updatedAt: Date(),
