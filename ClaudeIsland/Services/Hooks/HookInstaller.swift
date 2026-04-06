@@ -2349,9 +2349,136 @@ struct QoderHookSource: HookSource {
     var sourceType: SessionSource { inner.sourceType }
     var displayName: String { inner.displayName }
     var configPath: String { inner.configPath }
-    func install(bridgePath: String) throws { try inner.install(bridgePath: bridgePath) }
-    func uninstall() throws { try inner.uninstall() }
-    func isInstalled() -> Bool { inner.isInstalled() }
+    var managedConfigPaths: [String] {
+        configURLsForManagement().map(\.path)
+    }
+
+    private var projectConfigDirectoryURL: URL {
+        URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent(".qoder")
+    }
+
+    private func configURLsForManagement() -> [URL] {
+        var urls = [URL(fileURLWithPath: configPath)]
+        let projectSettingsURL = projectConfigDirectoryURL.appendingPathComponent("settings.json")
+        let projectLocalSettingsURL = projectConfigDirectoryURL.appendingPathComponent("settings.local.json")
+
+        if FileManager.default.fileExists(atPath: projectSettingsURL.path) {
+            urls.append(projectSettingsURL)
+        }
+        if FileManager.default.fileExists(atPath: projectLocalSettingsURL.path) {
+            urls.append(projectLocalSettingsURL)
+        }
+
+        return urls
+    }
+
+    func install(bridgePath: String) throws {
+        for configURL in configURLsForManagement() {
+            try installManagedHooks(at: configURL)
+        }
+    }
+
+    func uninstall() throws {
+        for configURL in configURLsForManagement() {
+            try uninstallManagedHooks(at: configURL)
+        }
+    }
+
+    func isInstalled() -> Bool {
+        configURLsForManagement().contains { configURL in
+            isManagedHookInstalled(at: configURL)
+        }
+    }
+
+    private func installManagedHooks(at configURL: URL) throws {
+        try? FileManager.default.createDirectory(
+            at: configURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        var json: [String: Any] = [:]
+        if let data = try? Data(contentsOf: configURL),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            json = existing
+        }
+
+        let command = HookInstaller.hookCommandPath() + " --source qoder"
+        var hooks = json["hooks"] as? [String: Any] ?? [:]
+
+        for event in Self.qoderEvents {
+            var hookCmd: [String: Any] = ["type": "command", "command": command]
+            if let timeout = event.timeout {
+                hookCmd["timeout"] = timeout
+            }
+
+            var entry: [String: Any] = ["hooks": [hookCmd]]
+            if let matcher = event.matcher {
+                entry["matcher"] = matcher
+            }
+
+            if var existingEntries = hooks[event.name] as? [[String: Any]] {
+                existingEntries.removeAll { existingEntry in
+                    if let entryHooks = existingEntry["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
+                }
+                existingEntries.append(entry)
+                hooks[event.name] = existingEntries
+            } else {
+                hooks[event.name] = [entry]
+            }
+        }
+
+        json["hooks"] = hooks
+
+        if let data = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
+            try data.write(to: configURL)
+        }
+    }
+
+    private func uninstallManagedHooks(at configURL: URL) throws {
+        guard let data = try? Data(contentsOf: configURL),
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              var hooks = json["hooks"] as? [String: Any] else { return }
+
+        for (event, value) in hooks {
+            if var entries = value as? [[String: Any]] {
+                entries.removeAll { entry in
+                    if let entryHooks = entry["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
+                }
+                if entries.isEmpty { hooks.removeValue(forKey: event) } else { hooks[event] = entries }
+            }
+        }
+
+        if hooks.isEmpty { json.removeValue(forKey: "hooks") } else { json["hooks"] = hooks }
+
+        if let updated = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
+            try updated.write(to: configURL)
+        }
+    }
+
+    private func isManagedHookInstalled(at configURL: URL) -> Bool {
+        guard let data = try? Data(contentsOf: configURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let hooks = json["hooks"] as? [String: Any] else { return false }
+
+        return hooks.values.contains { value in
+            if let entries = value as? [[String: Any]] {
+                return entries.contains { entry in
+                    if let entryHooks = entry["hooks"] as? [[String: Any]] {
+                        return entryHooks.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                    }
+                    return false
+                }
+            }
+            return false
+        }
+    }
 }
 
 // MARK: - Droid Hook Source

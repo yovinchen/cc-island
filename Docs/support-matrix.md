@@ -16,7 +16,7 @@
 | 对象 | 当前状态 | 集成入口 | 受管安装 | 事件接入 | 阻塞审批 | 备注 |
 |------|----------|----------|:--------:|:--------:|:--------:|------|
 | Warp | 宿主级支持 | 宿主识别 / 窗口聚焦 | — | — | — | 不是 hook source |
-| Qoder（IDE hooks） | 正式接入 | `settings.json` hooks | ✅ | ✅ | ✅ | 通过 `permissionDecision` 走隐式审批 |
+| Qoder（IDE hooks） | 正式接入 | `settings.json` hooks | ✅ | ✅ | ✅ | 通过 `permissionDecision` 走隐式审批；项目级 `.qoder/settings*.json` 在存在时也纳入受管安装 |
 | Antigravity | 未接入 | — | — | — | — | 仅 docs / gap 分析 |
 | Trae | 未接入 | unsupported marker | — | — | — | 代码里有 `SessionSource.trae`，但未进入 installer |
 | Cursor | 正式接入 | `hooks.json` | ✅ | ✅ | ✅ | Cursor 专属 `{continue, permission}` 响应 |
@@ -68,7 +68,7 @@
 | 对象 | 设置/UI | 自动修复 | 配置监听 | 宿主聚焦 | 解析增强 | 备注 |
 |------|:------:|:--------:|:--------:|:--------:|:--------:|------|
 | Warp | — | — | — | ✅ | — | 仅宿主终端识别 |
-| Qoder（IDE hooks） | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
+| Qoder（IDE hooks） | ✅ | ✅ | ✅ | ✅ | ⚠️ | 正式 hooks source；项目级 `.qoder/settings*.json` 在存在时也纳入受管安装 |
 | Antigravity | — | — | — | — | — | docs-only |
 | Trae | — | — | — | — | — | unsupported |
 | Cursor | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |

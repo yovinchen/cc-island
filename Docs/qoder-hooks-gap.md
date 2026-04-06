@@ -8,6 +8,7 @@
 |------|------|------|
 | 配置文件格式 | ✅ | PascalCase 事件名、嵌套 `{matcher, hooks}` 结构 |
 | 5 个事件注册 | ✅ | UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop |
+| 多层配置托管 | ✅ | 当前会始终管理 `~/.qoder/settings.json`，并在存在时同步管理 `.qoder/settings.json` / `.qoder/settings.local.json` |
 | matcher 正则匹配 | ✅ | PreToolUse/PostToolUse/PostToolUseFailure 使用 `"*"` 通配符 |
 | stdin JSON 输入解析 | ✅ | bridge 正确解析 session_id, cwd, tool_name 等字段 |
 | 基础状态追踪 | ✅ | 工具执行状态同步到 Notch UI |
@@ -175,11 +176,13 @@
 - 文档中“PreToolUse 权限决策未实现”的结论已过时。`PermissionHandler.isImplicitPermissionRequest()` 已把 `qoder` 的危险工具调用视为隐式审批请求。
 - `HookSocketServer.buildResponseData()` 也已为 `.qoder` 返回 `hookSpecificOutput.permissionDecision`。
 - `EventMapper` 和 `SessionStore` 已识别 `PostToolUseFailure`，因此剩余问题主要是 UI 表达和 exit code 语义，而不是基础协议缺失。
+- 当前运行时也会在检测到项目级 `.qoder/settings.json` / `.qoder/settings.local.json` 时给出提示，并在这些文件已存在时同步纳入受管安装，减少“只改了用户级配置但项目级覆盖仍在”的误判。
 
 **最小实现方案**
 1. 同步本文旧结论，标明隐式审批链路已经存在。
 2. 在 bridge 侧补 `deny -> exit code 2`，让 Qoder 真正阻止动作。
 3. 在 UI 中强化 `PostToolUseFailure` 的错误展示，而不是只当普通 processing 事件。
+4. 保持单一 `qoder` source，不额外拆 `qoder_cli`，但继续复用同一套多层配置托管。
 
 **主要阻塞**
 - `exit code 2` 需要改 bridge 进程退出行为，这会影响所有隐式审批源，不能只改文档层。

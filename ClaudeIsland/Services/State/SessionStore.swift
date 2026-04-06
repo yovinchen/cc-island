@@ -331,6 +331,23 @@ actor SessionStore {
                 return "Project Cline hooks detected at .clinerules/hooks; Claude Island will manage that layer alongside your global hooks when present."
             }
             return nil
+        case .qoder:
+            let projectDir = URL(fileURLWithPath: cwd).appendingPathComponent(".qoder")
+            let projectSettings = projectDir.appendingPathComponent("settings.json").path
+            let projectLocalSettings = projectDir.appendingPathComponent("settings.local.json").path
+            let hasProjectSettings = FileManager.default.fileExists(atPath: projectSettings)
+            let hasProjectLocalSettings = FileManager.default.fileExists(atPath: projectLocalSettings)
+
+            if hasProjectSettings && hasProjectLocalSettings {
+                return "Project Qoder configs detected at .qoder/settings.json and .qoder/settings.local.json; Claude Island will manage both layers alongside your user-level hooks when present."
+            }
+            if hasProjectSettings {
+                return "Project Qoder config detected at .qoder/settings.json; Claude Island will manage that layer alongside your user-level hooks when present."
+            }
+            if hasProjectLocalSettings {
+                return "Local Qoder config detected at .qoder/settings.local.json; Claude Island will manage that layer alongside your user-level hooks when present."
+            }
+            return nil
         case .crush:
             let path = URL(fileURLWithPath: cwd)
                 .appendingPathComponent(".crush/logs/crush.log")
