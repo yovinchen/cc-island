@@ -598,6 +598,27 @@ class CodexSessionWatcher {
                 lastAssistantMessage: text
             )
 
+        case "reasoning":
+            guard let summary = extractReasoningSummary(from: payload) else {
+                return nil
+            }
+
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: cwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "reasoning",
+                message: summary
+            )
+
         default:
             return nil
         }
@@ -688,6 +709,26 @@ class CodexSessionWatcher {
         }
 
         return nil
+    }
+
+    private func extractReasoningSummary(from payload: [String: Any]) -> String? {
+        if let summaryItems = payload["summary"] as? [[String: Any]] {
+            let text = summaryItems.compactMap { item -> String? in
+                guard let type = item["type"] as? String, type == "summary_text",
+                      let text = item["text"] as? String else {
+                    return nil
+                }
+                return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+
+            if !text.isEmpty {
+                return text
+            }
+        }
+
+        return payload["text"] as? String
     }
 
     private func emitSessionStart(sessionId: String, cwd: String) {
