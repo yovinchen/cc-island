@@ -11,6 +11,7 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case codex
     case claude
     case gemini
+    case copilot
     case kimi
     case kiro
     case jetbrains
@@ -26,6 +27,7 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .codex: return "Codex"
         case .claude: return "Claude"
         case .gemini: return "Gemini"
+        case .copilot: return "Copilot"
         case .kimi: return "Kimi"
         case .kiro: return "Kiro"
         case .jetbrains: return "JetBrains AI"
@@ -39,6 +41,7 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     var shortName: String {
         switch self {
         case .openrouter: return "OR"
+        case .copilot: return "GH"
         case .jetbrains: return "JB"
         case .kimiK2: return "K2"
         default: return displayName
@@ -50,6 +53,7 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .codex: return "triangle.3d"
         case .claude: return "sun.max"
         case .gemini: return "sparkle"
+        case .copilot: return "person.crop.circle.badge.checkmark"
         case .kimi: return "moon.stars"
         case .kiro: return "terminal"
         case .jetbrains: return "chevron.left.forwardslash.chevron.right"

@@ -3,6 +3,36 @@ import XCTest
 
 @MainActor
 final class Wave2QuotaProviderTests: XCTestCase {
+    func testCopilotUsageResponseDecodesQuotaSnapshots() throws {
+        let data = Data(
+            """
+            {
+              "copilot_plan": "individual",
+              "quota_snapshots": {
+                "premium_interactions": {
+                  "entitlement": 300,
+                  "remaining": 120,
+                  "percent_remaining": 40,
+                  "quota_id": "premium"
+                },
+                "chat": {
+                  "entitlement": 1000,
+                  "remaining": 950,
+                  "percent_remaining": 95,
+                  "quota_id": "chat"
+                }
+              }
+            }
+            """.utf8
+        )
+
+        let response = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
+
+        XCTAssertEqual(response.copilotPlan, "individual")
+        XCTAssertEqual(response.quotaSnapshots.premiumInteractions?.percentRemaining ?? 0, 40, accuracy: 0.001)
+        XCTAssertEqual(response.quotaSnapshots.chat?.remaining ?? 0, 950, accuracy: 0.001)
+    }
+
     func testKimiUsageResponseDecodesWeeklyAndRateLimit() throws {
         let data = Data(
             """

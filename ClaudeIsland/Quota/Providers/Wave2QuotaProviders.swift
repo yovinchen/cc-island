@@ -8,6 +8,167 @@ import Foundation
 import FoundationXML
 #endif
 
+// MARK: - Copilot
+
+struct CopilotUsageResponse: Decodable, Sendable {
+    struct QuotaSnapshot: Decodable, Sendable {
+        let entitlement: Double
+        let remaining: Double
+        let percentRemaining: Double
+        let quotaId: String
+        let hasPercentRemaining: Bool
+
+        private enum CodingKeys: String, CodingKey {
+            case entitlement
+            case remaining
+            case percentRemaining = "percent_remaining"
+            case quotaId = "quota_id"
+        }
+
+        init(
+            entitlement: Double,
+            remaining: Double,
+            percentRemaining: Double,
+            quotaId: String,
+            hasPercentRemaining: Bool = true
+        ) {
+            self.entitlement = entitlement
+            self.remaining = remaining
+            self.percentRemaining = percentRemaining
+            self.quotaId = quotaId
+            self.hasPercentRemaining = hasPercentRemaining
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let decodedEntitlement = Self.decodeNumber(container, key: .entitlement)
+            let decodedRemaining = Self.decodeNumber(container, key: .remaining)
+            entitlement = decodedEntitlement ?? 0
+            remaining = decodedRemaining ?? 0
+            if let decodedPercent = Self.decodeNumber(container, key: .percentRemaining) {
+                percentRemaining = max(0, min(100, decodedPercent))
+                hasPercentRemaining = true
+            } else if let decodedEntitlement, decodedEntitlement > 0, let decodedRemaining {
+                percentRemaining = max(0, min(100, (decodedRemaining / decodedEntitlement) * 100))
+                hasPercentRemaining = true
+            } else {
+                percentRemaining = 0
+                hasPercentRemaining = false
+            }
+            quotaId = try container.decodeIfPresent(String.self, forKey: .quotaId) ?? ""
+        }
+
+        private static func decodeNumber(_ container: KeyedDecodingContainer<CodingKeys>, key: CodingKeys) -> Double? {
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return Double(value)
+            }
+            return nil
+        }
+    }
+
+    struct QuotaSnapshots: Decodable, Sendable {
+        let premiumInteractions: QuotaSnapshot?
+        let chat: QuotaSnapshot?
+
+        private enum CodingKeys: String, CodingKey {
+            case premiumInteractions = "premium_interactions"
+            case chat
+        }
+    }
+
+    let quotaSnapshots: QuotaSnapshots
+    let copilotPlan: String
+
+    private enum CodingKeys: String, CodingKey {
+        case quotaSnapshots = "quota_snapshots"
+        case copilotPlan = "copilot_plan"
+    }
+}
+
+struct CopilotQuotaProvider: QuotaProvider {
+    let descriptor = QuotaProviderRegistry.descriptor(for: .copilot)
+
+    func isConfigured() -> Bool {
+        authToken() != nil
+    }
+
+    func fetch() async throws -> QuotaSnapshot {
+        guard let token = authToken(), !token.isEmpty else {
+            throw QuotaProviderError.missingCredentials("Copilot GitHub token not configured.")
+        }
+
+        var request = URLRequest(url: URL(string: "https://api.github.com/copilot_internal/user")!)
+        request.httpMethod = "GET"
+        request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("vscode/1.96.2", forHTTPHeaderField: "Editor-Version")
+        request.setValue("copilot-chat/0.26.7", forHTTPHeaderField: "Editor-Plugin-Version")
+        request.setValue("GitHubCopilotChat/0.26.7", forHTTPHeaderField: "User-Agent")
+        request.setValue("2025-04-01", forHTTPHeaderField: "X-Github-Api-Version")
+
+        let (data, response) = try await QuotaRuntimeSupport.data(for: request)
+        switch response.statusCode {
+        case 200:
+            break
+        case 401, 403:
+            throw QuotaProviderError.unauthorized("Copilot GitHub token is invalid or missing required scope.")
+        default:
+            throw QuotaProviderError.invalidResponse("Copilot API returned HTTP \(response.statusCode)")
+        }
+
+        let usage = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
+        let premiumWindow = makeWindow(label: descriptor.primaryLabel, snapshot: usage.quotaSnapshots.premiumInteractions)
+        let chatWindow = makeWindow(label: descriptor.secondaryLabel ?? "Chat", snapshot: usage.quotaSnapshots.chat)
+
+        let primaryWindow: QuotaWindow?
+        let secondaryWindow: QuotaWindow?
+        if let premiumWindow {
+            primaryWindow = premiumWindow
+            secondaryWindow = chatWindow
+        } else {
+            primaryWindow = nil
+            secondaryWindow = chatWindow
+        }
+
+        return QuotaSnapshot(
+            providerID: .copilot,
+            source: .apiKey,
+            primaryWindow: primaryWindow,
+            secondaryWindow: secondaryWindow,
+            credits: nil,
+            identity: QuotaIdentity(
+                email: nil,
+                organization: nil,
+                plan: usage.copilotPlan.capitalized,
+                detail: nil
+            ),
+            updatedAt: Date(),
+            note: nil
+        )
+    }
+
+    private func authToken() -> String? {
+        SavedProviderTokenResolver.token(for: QuotaProviderID.copilot, envKeys: ["GITHUB_TOKEN", "COPILOT_TOKEN"])
+    }
+
+    private func makeWindow(label: String, snapshot: CopilotUsageResponse.QuotaSnapshot?) -> QuotaWindow? {
+        guard let snapshot, snapshot.hasPercentRemaining else { return nil }
+        let usedRatio = max(0, min(1, (100 - snapshot.percentRemaining) / 100))
+        return QuotaWindow(
+            label: label,
+            usedRatio: usedRatio,
+            detail: nil,
+            resetsAt: nil
+        )
+    }
+}
+
 // MARK: - Kimi
 
 struct KimiUsageResponse: Codable {
