@@ -44,6 +44,7 @@ Pi Coding Agent **当前已部分支持**。Claude Island 现在已提供最小 
   - `Stop`
 - 当前运行时也会检测 `PI_CODING_AGENT_DIR`，并提示 Claude Island 现在仍是 wrapper-based 集成。
 - `claude-island-pi-json` 会运行 `pi --mode json -p`，保留原始 JSON 输出并提炼最终 assistant 文本。
+- 当前 `pi-json` 已开始 best-effort 提炼 `tool_use / tool_result` 等常见结构，用于回放基础工具事件。
 
 **可实施方案**
 1. 当前已完成第一阶段 wrapper 原型。
