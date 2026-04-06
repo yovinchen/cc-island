@@ -58,10 +58,27 @@ enum EventMapper {
         }
 
         if payload["tool_input"] == nil,
-           let toolInput = input["tool_input"] ?? input["toolInput"] ?? nested(input, "tool", "input") {
+           let toolInput = input["tool_input"] ??
+                input["toolInput"] ??
+                nested(input, "tool", "input") ??
+                nested(input, "tool", "args") ??
+                nested(input, "tool", "arguments") {
             payload["tool_input"] = toolInput
         } else if payload["tool_input"] == nil,
-                  let toolArgs = firstString(input["toolArgs"], input["tool_args"]) {
+                  let toolArgs = input["toolArgs"] as? [String: Any] ??
+                    input["tool_args"] as? [String: Any] ??
+                    input["modifiedArgs"] as? [String: Any] ??
+                    nested(input, "toolCall", "arguments") as? [String: Any] ??
+                    nested(input, "toolCall", "args") as? [String: Any] {
+            payload["tool_input"] = toolArgs
+        } else if payload["tool_input"] == nil,
+                  let toolArgs = firstString(
+                    input["toolArgs"],
+                    input["tool_args"],
+                    input["modifiedArgs"],
+                    nested(input, "toolCall", "arguments"),
+                    nested(input, "toolCall", "args")
+                  ) {
             if let data = toolArgs.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) {
                 payload["tool_input"] = json
@@ -199,8 +216,13 @@ enum EventMapper {
         if let name = nested(input, "tool_info", "toolName") as? String { return name }
         if let name = nested(input, "toolResult", "toolName") as? String { return name }
         if let name = nested(input, "tool_result", "toolName") as? String { return name }
+        if let name = nested(input, "toolResult", "name") as? String { return name }
+        if let name = nested(input, "tool_result", "name") as? String { return name }
         if let name = nested(input, "toolResult", "tool") as? String { return name }
         if let name = nested(input, "tool_result", "tool") as? String { return name }
+        if let name = nested(input, "result", "toolName") as? String { return name }
+        if let name = nested(input, "result", "name") as? String { return name }
+        if let name = nested(input, "result", "tool") as? String { return name }
         if let tool = input["tool"] as? [String: Any], let name = tool["name"] as? String { return name }
         if let name = input["tool"] as? String { return name }
         return nil
@@ -493,10 +515,13 @@ enum EventMapper {
             input["error"],
             input["error_message"],
             input["stderr"],
+            nested(input, "error", "message"),
             nested(input, "toolResult", "error"),
             nested(input, "toolResult", "stderr"),
             nested(input, "tool_result", "error"),
             nested(input, "tool_result", "stderr"),
+            nested(input, "result", "error"),
+            nested(input, "result", "stderr"),
             nested(input, "tool_response", "error"),
             nested(input, "toolResponse", "error")
         )
@@ -509,6 +534,9 @@ enum EventMapper {
             input["output"],
             input["stdout"],
             input["stderr"],
+            nested(input, "result", "output"),
+            nested(input, "result", "stdout"),
+            nested(input, "result", "stderr"),
             nested(input, "toolResult", "output"),
             nested(input, "toolResult", "stdout"),
             nested(input, "toolResult", "stderr"),
@@ -519,20 +547,34 @@ enum EventMapper {
             return direct
         }
 
-        if let returnDisplay = stringify(nested(input, "tool_response", "returnDisplay")) ??
-            stringify(nested(input, "toolResponse", "returnDisplay")) {
+        if let returnDisplay = firstString(
+            stringify(nested(input, "tool_response", "returnDisplay")),
+            stringify(nested(input, "toolResponse", "returnDisplay")),
+            stringify(nested(input, "result", "returnDisplay"))
+        ) {
             return returnDisplay
         }
 
-        return stringify(nested(input, "tool_response", "llmContent")) ??
-            stringify(nested(input, "toolResponse", "llmContent")) ??
-            stringify(nested(input, "toolResult", "textResultForLlm")) ??
-            stringify(nested(input, "tool_result", "textResultForLlm")) ??
-            stringify(nested(input, "toolResult", "textResult")) ??
-            extractTextContent(from: input["message"]) ??
-            extractTextContent(from: input["content"]) ??
-            extractTextContent(from: nested(input, "toolResult", "content")) ??
+        if let llmText = firstString(
+            stringify(nested(input, "tool_response", "llmContent")),
+            stringify(nested(input, "toolResponse", "llmContent")),
+            stringify(nested(input, "result", "llmContent")),
+            stringify(nested(input, "result", "textResultForLlm")),
+            stringify(nested(input, "result", "textResult")),
+            stringify(nested(input, "toolResult", "textResultForLlm")),
+            stringify(nested(input, "tool_result", "textResultForLlm")),
+            stringify(nested(input, "toolResult", "textResult"))
+        ) {
+            return llmText
+        }
+
+        return firstString(
+            extractTextContent(from: nested(input, "result", "content")),
+            extractTextContent(from: input["message"]),
+            extractTextContent(from: input["content"]),
+            extractTextContent(from: nested(input, "toolResult", "content")),
             extractTextContent(from: nested(input, "tool_result", "content"))
+        )
     }
 
     private static func extractLastAssistantMessage(from input: [String: Any]) -> String? {
@@ -543,7 +585,13 @@ enum EventMapper {
             input["lastAgentMessage"],
             input["prompt_response"],
             input["promptResponse"]
+        ) ?? firstString(
+            nested(input, "assistant", "message"),
+            nested(input, "result", "message"),
+            nested(input, "error", "message")
         ) ?? extractTextContent(from: input["message"]) ??
+            extractTextContent(from: nested(input, "assistant", "content")) ??
+            extractTextContent(from: nested(input, "result", "content")) ??
             extractTextContent(from: input["content"]) ??
             extractTextContent(from: nested(input, "message", "content"))
     }
@@ -605,10 +653,15 @@ enum EventMapper {
             input["compact_summary"],
             input["compactSummary"],
             input["model"],
+            nested(input, "assistant", "message"),
+            nested(input, "result", "message"),
+            nested(input, "error", "message"),
             nested(input, "details", "message"),
             nested(input, "details", "title"),
             nested(input, "details", "description")
         ) ?? stringify(input["selected_tools"]) ??
+            stringify(nested(input, "assistant", "content")) ??
+            stringify(nested(input, "result", "content")) ??
             stringify(input["content"]) ??
             stringify(input["selectedTools"]) ??
             stringify(input["details"])
