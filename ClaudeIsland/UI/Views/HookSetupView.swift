@@ -278,7 +278,7 @@ struct ToolSetupRow: View {
         case .codexCLI: return "~/.codex/hooks.json + ~/.codex/config.toml"
         case .gemini: return "~/.gemini/settings.json or .gemini/settings.json"
         case .cursor: return "~/.cursor/hooks.json or .cursor/hooks.json"
-        case .windsurf: return "~/.codeium/windsurf/hooks.json (+ .windsurf/hooks.json / /Library/Application Support/Windsurf/hooks.json)"
+        case .windsurf: return "~/.codeium/windsurf/hooks.json (+ managed .windsurf/hooks.json when present / diagnose-only /Library/Application Support/Windsurf/hooks.json)"
         case .kimiCLI: return "~/.kimi/config.toml (+ ~/.claude-island/bin/claude-island-kimi-print for print-mode fallback)"
         case .kiroCLI: return "~/.kiro/agents/claude-island.json + ~/.claude-island/bin/claude-island-kiro"
         case .ampCLI: return "~/.config/amp/plugins/claude-island.ts"

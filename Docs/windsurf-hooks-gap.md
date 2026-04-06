@@ -10,7 +10,7 @@
 |------|------|------|
 | `SessionSource` / `HookSource` | ✅ | 当前已新增 `windsurf` source 与安装器 |
 | 宿主终端识别 | ✅ | `TerminalAppRegistry` 已识别 `Windsurf` 名称和 `com.exafunction.windsurf` bundle id |
-| Hook 安装与事件映射 | ✅ | 已支持用户级 `hooks.json` 安装、基础事件映射与 UI/repair/watcher 接线 |
+| Hook 安装与事件映射 | ✅ | 已支持用户级 `hooks.json` 安装；若当前工作目录存在 `.windsurf/hooks.json`，也会一并纳入受管安装 |
 
 ## 官方已提供的 Hook 能力
 
@@ -52,8 +52,8 @@ Windsurf **现已完成首版接入**。当前版本先覆盖用户级 hooks 安
 **最小实现方案**
 1. 已新增 `SessionSource.windsurf` 和 `WindsurfHookSource`。
 2. 当前已补更完整的 event -> 统一事件映射，包括 `post_read_code`、`pre_mcp_tool_use`、`post_mcp_tool_use`、`post_cascade_response_with_transcript`、`post_setup_worktree`。
-3. 当前运行时已会检测 workspace 级 `.windsurf/hooks.json` 和 system 级 `/Library/Application Support/Windsurf/hooks.json`，并提示它们可能覆盖或扩展用户级 hooks。
-4. 下一步再决定是否把 pre-hook 阻塞接到 Notch 审批，以及是否要把 workspace/system 级 hooks 纳入更深的托管。
+3. 当前运行时已会检测 workspace 级 `.windsurf/hooks.json` 和 system 级 `/Library/Application Support/Windsurf/hooks.json`；workspace 层在当前工作目录存在时已纳入受管安装，system 层仍保持诊断-only。
+4. 下一步再决定是否把 pre-hook 阻塞接到 Notch 审批，以及是否值得做 system 级托管。
 
 **主要阻塞**
 - 当前主要阻塞已经从“没有 source”转成“是否要支持审批返回和更多 Windsurf 事件类型”。

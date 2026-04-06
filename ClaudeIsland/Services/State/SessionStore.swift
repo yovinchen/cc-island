@@ -284,10 +284,10 @@ actor SessionStore {
             let hasSystem = FileManager.default.fileExists(atPath: systemPath)
 
             if hasWorkspace && hasSystem {
-                return "Workspace Windsurf hooks config detected at .windsurf/hooks.json, and system-level hooks were also found at /Library/Application Support/Windsurf/hooks.json; higher-priority layers may override or extend your user-level hooks."
+                return "Workspace Windsurf hooks config detected at .windsurf/hooks.json and will be managed alongside your user-level hooks when present; system-level hooks were also found at /Library/Application Support/Windsurf/hooks.json and may still override lower layers."
             }
             if hasWorkspace {
-                return "Workspace Windsurf hooks config detected at .windsurf/hooks.json; it may override or extend your user-level hooks."
+                return "Workspace Windsurf hooks config detected at .windsurf/hooks.json; Claude Island now manages that layer alongside your user-level hooks when present."
             }
             if hasSystem {
                 return "System-level Windsurf hooks config detected at /Library/Application Support/Windsurf/hooks.json; it may override or extend your user/workspace hooks."

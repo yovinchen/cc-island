@@ -20,7 +20,7 @@
 | Antigravity | 未接入 | — | — | — | — | 仅 docs / gap 分析 |
 | Trae | 未接入 | unsupported marker | — | — | — | 代码里有 `SessionSource.trae`，但未进入 installer |
 | Cursor | 正式接入 | `hooks.json` | ✅ | ✅ | ✅ | Cursor 专属 `{continue, permission}` 响应 |
-| Windsurf | 部分支持 | `hooks.json` | ✅ | ✅ | ⚠️ | deny 已支持 `stderr + exit 2`，workspace/system 已有诊断但仍未完整托管 |
+| Windsurf | 部分支持 | `hooks.json` | ✅ | ✅ | ⚠️ | deny 已支持 `stderr + exit 2`，workspace 层在存在时已纳入受管安装，system 仍只诊断 |
 | CodeBuddy | 正式接入 | `settings.json` hooks | ✅ | ✅ | ✅ | 隐式审批已接通 |
 | Kiro | 部分支持 | custom agent + wrapper | ✅ | ✅ | — | 需显式使用 `claude-island` agent；推荐走 wrapper |
 | Lingma | 未接入 | — | — | — | — | 当前只有 rules / MCP 路线 |
@@ -72,7 +72,7 @@
 | Antigravity | — | — | — | — | — | docs-only |
 | Trae | — | — | — | — | — | unsupported |
 | Cursor | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
-| Windsurf | ✅ | ✅ | ✅ | ✅ | ⚠️ | 已补更多 Cascade / MCP 事件映射 |
+| Windsurf | ✅ | ✅ | ✅ | ✅ | ⚠️ | 已补更多 Cascade / MCP 事件映射，workspace hooks 在存在时已纳入受管安装 |
 | CodeBuddy | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kiro | ✅ | ✅ | ✅ | — | ⚠️ | helper 与 custom agent 现在都进入 auto-repair / watcher |
 | Lingma | — | — | — | — | — | docs-only |
@@ -110,4 +110,4 @@
 
 - `Pi` 现在已经有真实的 helper-path 单工具和多工具串行样本，后续主要是继续收紧 `json` / `rpc` 解析，而不是再证明它能不能调用工具。
 - `Crush` 现在已经有失败样本、成功样本和“明确要求使用工具”的成功样本；结论是项目日志仍然只暴露 HTTP/SSE 与遥测层信号，不应再假设存在稳定的本地 tool-level schema。
-- `Windsurf / Kimi / Copilot / Cline / Amp` 依然属于“代码可用但功能仍在打磨”的第一梯队，后续增强应继续基于真实样本或官方文档，而不是扩大抽象层。
+- `Windsurf / Kimi / Copilot / Cline / Amp` 依然属于“代码可用但功能仍在打磨”的第一梯队，后续增强应继续基于真实样本或官方文档，而不是扩大抽象层；其中 Windsurf 当前只剩 system 级托管仍保持谨慎未做。

@@ -1460,8 +1460,11 @@ struct WindsurfHookSource: HookSource {
     var displayName: String { "Windsurf" }
 
     var configPath: String {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".codeium/windsurf/hooks.json").path
+        userConfigURL.path
+    }
+
+    var managedConfigPaths: [String] {
+        configURLsForManagement().map(\.path)
     }
 
     private static let events = [
@@ -1479,79 +1482,112 @@ struct WindsurfHookSource: HookSource {
         "post_setup_worktree"
     ]
 
+    private var userConfigURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".codeium/windsurf/hooks.json")
+    }
+
+    private var workspaceConfigURL: URL? {
+        let workspaceRoot = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        let workspaceDir = workspaceRoot.appendingPathComponent(".windsurf")
+        let workspaceHooks = workspaceDir.appendingPathComponent("hooks.json")
+        guard FileManager.default.fileExists(atPath: workspaceDir.path) ||
+                FileManager.default.fileExists(atPath: workspaceHooks.path) else {
+            return nil
+        }
+        return workspaceHooks
+    }
+
+    private func configURLsForManagement() -> [URL] {
+        var urls = [userConfigURL]
+        if let workspaceConfigURL {
+            urls.append(workspaceConfigURL)
+        }
+        return urls
+    }
+
     func install(bridgePath: String) throws {
-        let configURL = URL(fileURLWithPath: configPath)
-        try? FileManager.default.createDirectory(
-            at: configURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+        HookInstaller.installLauncher()
+        for configURL in configURLsForManagement() {
+            try? FileManager.default.createDirectory(
+                at: configURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
 
-        var json: [String: Any] = [:]
-        if let data = try? Data(contentsOf: configURL),
-           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            json = existing
-        }
-
-        var hooks = json["hooks"] as? [String: Any] ?? [:]
-        let command = "\(HookInstaller.hookCommandPath()) --source windsurf"
-
-        for event in Self.events {
-            let hookEntry: [String: Any] = [
-                "command": command,
-                "show_output": false
-            ]
-
-            if var existing = hooks[event] as? [[String: Any]] {
-                existing.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
-                existing.append(hookEntry)
-                hooks[event] = existing
-            } else {
-                hooks[event] = [hookEntry]
+            var json: [String: Any] = [:]
+            if let data = try? Data(contentsOf: configURL),
+               let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                json = existing
             }
-        }
 
-        json["hooks"] = hooks
+            var hooks = json["hooks"] as? [String: Any] ?? [:]
+            let command = "\(HookInstaller.hookCommandPath()) --source windsurf"
 
-        if let data = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
-            try data.write(to: configURL)
+            for event in Self.events {
+                let hookEntry: [String: Any] = [
+                    "command": command,
+                    "show_output": false
+                ]
+
+                if var existing = hooks[event] as? [[String: Any]] {
+                    existing.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
+                    existing.append(hookEntry)
+                    hooks[event] = existing
+                } else {
+                    hooks[event] = [hookEntry]
+                }
+            }
+
+            json["hooks"] = hooks
+
+            if let data = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
+                try data.write(to: configURL)
+            }
         }
     }
 
     func uninstall() throws {
-        let configURL = URL(fileURLWithPath: configPath)
-        guard let data = try? Data(contentsOf: configURL),
-              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              var hooks = json["hooks"] as? [String: Any] else { return }
+        for configURL in configURLsForManagement() {
+            guard let data = try? Data(contentsOf: configURL),
+                  var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  var hooks = json["hooks"] as? [String: Any] else { continue }
 
-        for (event, value) in hooks {
-            if var entries = value as? [[String: Any]] {
-                entries.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
-                if entries.isEmpty {
-                    hooks.removeValue(forKey: event)
-                } else {
-                    hooks[event] = entries
+            for (event, value) in hooks {
+                if var entries = value as? [[String: Any]] {
+                    entries.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
+                    if entries.isEmpty {
+                        hooks.removeValue(forKey: event)
+                    } else {
+                        hooks[event] = entries
+                    }
                 }
             }
-        }
 
-        if hooks.isEmpty { json.removeValue(forKey: "hooks") } else { json["hooks"] = hooks }
+            if hooks.isEmpty { json.removeValue(forKey: "hooks") } else { json["hooks"] = hooks }
 
-        if let updated = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
-            try updated.write(to: configURL)
+            if let updated = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) {
+                try updated.write(to: configURL)
+            }
         }
     }
 
     func isInstalled() -> Bool {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: configPath)),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any] else { return false }
+        for configURL in configURLsForManagement() {
+            guard let data = try? Data(contentsOf: configURL),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let hooks = json["hooks"] as? [String: Any] else { continue }
 
-        return hooks.values.contains { value in
-            if let entries = value as? [[String: Any]] {
-                return entries.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+            let hasManagedHook = hooks.values.contains { value in
+                if let entries = value as? [[String: Any]] {
+                    return entries.contains { ($0["command"] as? String)?.contains("claude-island") == true }
+                }
+                return false
             }
-            return false
+            if hasManagedHook {
+                return true
+            }
         }
+        return false
     }
 }
 
