@@ -33,7 +33,7 @@
 | Amp CLI | 部分支持 | `SessionSource.ampCLI` + plugin + `amp-exec` fallback + `amp-stream` helper |
 | Cline / Cline CLI | 部分支持 | `SessionSource.cline` + `ClineHookSource`，当前先做 hooks 监控与启用诊断 |
 | Qoder CLI | 仅文档 | `Docs/qoder-cli-hooks-gap.md`，当前明确不拆 source |
-| Pi Coding Agent | 部分支持 | `SessionSource.pi` + `claude-island-pi` helper，当前先做 wrapper 原型 |
+| Pi Coding Agent | 部分支持 | `SessionSource.pi` + `claude-island-pi` / `pi-json` helpers |
 | Crush | 部分支持 | `SessionSource.crush` + wrapper + `CrushLogWatcher` 最小日志解析 |
 
 ### A. 已接入，可持续打磨
@@ -70,7 +70,7 @@
 
 | CLI | 当前状态 | 原因 |
 |-----|----------|------|
-| Pi Coding Agent | 已部分接入 | 已有最小 CLI wrapper 原型，后续补 json/rpc 评估 |
+| Pi Coding Agent | 已部分接入 | 已有 wrapper + json helper 原型，后续补 rpc / session-file 评估 |
 | Crush | 已部分接入 | 已有最小 CLI wrapper 原型，后续补 session/state 调查 |
 
 ## 逐项分析
@@ -262,12 +262,12 @@
 
 **当前状态**
 - `Crush` 已有最小 wrapper 原型 + 日志 watcher 原型
-- `Pi` 已有最小 wrapper 原型
+- `Pi` 已有最小 wrapper 原型 + json helper 原型
 
 **建议**
 - `Crush` 继续从当前 `./.crush/logs/crush.log` watcher 原型往结构化解析推进
 - 继续避免先碰 MCP/权限
-- `Pi` 继续优先调查 `--mode json` / `--mode rpc` 的只读解析价值
+- `Pi` 继续从当前 `--mode json` helper 往更稳定的 json/rpc 解析推进
 
 ## 自动推进顺序
 

@@ -37,16 +37,19 @@ Pi Coding Agent **当前已部分支持**。Claude Island 现在已提供最小 
 
 **本地代码复核结果**
 - 当前会同步安装 `~/.claude-island/bin/claude-island-pi`。
+- 当前会同步安装 `~/.claude-island/bin/claude-island-pi-json`。
 - 这个 helper 会桥接：
   - `SessionStart`
   - 可选的 `UserPromptSubmit`（仅在传参启动时）
   - `Stop`
 - 当前运行时也会检测 `PI_CODING_AGENT_DIR`，并提示 Claude Island 现在仍是 wrapper-based 集成。
+- `claude-island-pi-json` 会运行 `pi --mode json -p`，保留原始 JSON 输出并提炼最终 assistant 文本。
 
 **可实施方案**
 1. 当前已完成第一阶段 wrapper 原型。
-2. 下一步优先评估 `--mode json` / `--mode rpc` 是否值得做只读解析。
-3. 在确认稳定 JSON 或 session 文件格式之前，不碰审批。
+2. 当前已完成第一阶段 `--mode json` helper 原型。
+3. 下一步再评估 `--mode rpc` 或 session 文件解析是否值得继续深入。
+4. 在确认稳定 JSON 或 session 文件格式之前，不碰审批。
 
 **主要阻塞**
 - 当前没有官方 hooks 规范，所有实现都会偏旁路，维护成本高。
