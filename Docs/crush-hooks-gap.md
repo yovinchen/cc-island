@@ -39,5 +39,10 @@ Crush **当前不支持接入**。公开资料显示它有 MCP、权限和命令
 1. 优先调查 Crush 是否有可读的 session/state 文件。
 2. 如果没有，再考虑命令包装器，把 MCP/permission 事件转成 Claude Island 统一协议。
 
+**当前推荐路线**
+1. 在 `Pi` 和 `Crush` 之间，优先做 `Crush` 的最小 runtime 原型。
+2. 第一阶段只做 CLI 包装器，先产出 `SessionStart / UserPromptSubmit / Stop`。
+3. 在确认稳定 session/state 文件之前，不碰 MCP / 权限集成。
+
 **主要阻塞**
 - 当前没有官方本地 hooks 配置面，意味着任何接入都不是“低成本新增 source”。

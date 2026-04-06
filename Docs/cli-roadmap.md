@@ -220,6 +220,7 @@
 - plugin 路线
 - `amp-exec` fallback 路线
 - plugin session id 更稳定
+- `AMP_SETTINGS_FILE` 自定义 settings 路径诊断
 
 **剩余缺口**
 - `stream-json` 仍未形成稳定第二入口
@@ -262,8 +263,9 @@
 - 只有文档，没有代码实现
 
 **建议**
-- 继续保持未接入
-- 直到出现稳定 hooks / watcher / session API 再说
+- `Crush` 比 `Pi` 更适合先做最小 runtime 原型
+- 推荐从“CLI 包装 + 统一 SessionStart/UserPromptSubmit/Stop”开始，而不是先碰 MCP/权限
+- `Pi` 继续保持 docs-only，除非先发现稳定的 session store 或官方扩展事件面
 
 ## 自动推进顺序
 
