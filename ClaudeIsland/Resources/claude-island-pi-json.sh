@@ -151,8 +151,61 @@ def emit_tool_end(tool_id, content, is_error=False):
         "error": text if is_error else None,
     })
 
-def process_line(raw):
+def remember_text(value):
     global last_text
+    if isinstance(value, str) and value.strip():
+        last_text = value.strip()
+
+def process_content_items(content):
+    texts = []
+    if not isinstance(content, list):
+        return texts
+    for item in content:
+        if not isinstance(item, dict):
+            if item is not None:
+                texts.append(str(item))
+            continue
+        item_type = item.get("type")
+        if item_type in ("tool_use", "tool-call", "tool_call"):
+            emit_tool_start(
+                item.get("id") or item.get("tool_use_id") or item.get("toolUseId"),
+                item.get("name") or item.get("tool"),
+                item.get("input") or item.get("arguments"),
+            )
+            continue
+        if item_type in ("tool_result", "tool-response", "tool_response"):
+            emit_tool_end(
+                item.get("tool_use_id") or item.get("toolUseId") or item.get("id"),
+                item.get("content") or item.get("output"),
+                bool(item.get("is_error") or item.get("isError")),
+            )
+            continue
+        if item.get("text"):
+            texts.append(item["text"])
+        elif item.get("content") is not None:
+            text = stringify(item.get("content"))
+            if text:
+                texts.append(text)
+    return texts
+
+def process_message(message):
+    if not isinstance(message, dict):
+        return
+    role = str(message.get("role") or "").lower()
+    if role in ("toolresult", "tool_result", "tool-result"):
+        emit_tool_end(
+            message.get("toolCallId") or message.get("tool_use_id") or message.get("toolUseId") or message.get("id"),
+            message.get("content") or message.get("output"),
+            bool(message.get("isError") or message.get("is_error")),
+        )
+        return
+
+    remember_text(message.get("text"))
+    texts = process_content_items(message.get("content"))
+    if texts:
+        remember_text("\\n".join(texts))
+
+def process_line(raw):
     raw = ansi_re.sub("", raw).strip()
     if not raw:
         return
@@ -164,40 +217,38 @@ def process_line(raw):
     if not isinstance(obj, dict):
         return
 
-    candidates = [obj.get("text"), obj.get("message"), obj.get("content")]
-    message = obj.get("message")
-    if isinstance(message, dict):
-        candidates.extend([message.get("text"), message.get("content")])
-        content = message.get("content")
-    else:
-        content = obj.get("content")
-
-    if isinstance(content, list):
-        texts = []
-        for item in content:
-            if not isinstance(item, dict):
-                continue
-            item_type = item.get("type")
-            if item_type == "text" and item.get("text"):
-                texts.append(item["text"])
-            elif item.get("text"):
-                texts.append(item["text"])
-            elif item_type in ("tool_use", "tool-call", "tool_call"):
-                emit_tool_start(item.get("id") or item.get("tool_use_id") or item.get("toolUseId"), item.get("name") or item.get("tool"), item.get("input") or item.get("arguments"))
-            elif item_type in ("tool_result", "tool-response", "tool_response"):
-                emit_tool_end(item.get("tool_use_id") or item.get("toolUseId") or item.get("id"), item.get("content") or item.get("output"), bool(item.get("is_error")))
-        if texts:
-            candidates.append("\\n".join(texts))
+    remember_text(obj.get("text"))
+    remember_text(obj.get("content") if isinstance(obj.get("content"), str) else None)
 
     top_type = obj.get("type")
     if top_type in ("tool_use", "tool-call", "tool_call"):
         emit_tool_start(obj.get("id") or obj.get("tool_use_id") or obj.get("toolUseId"), obj.get("name") or obj.get("tool"), obj.get("input") or obj.get("arguments"))
     elif top_type in ("tool_result", "tool-response", "tool_response"):
-        emit_tool_end(obj.get("tool_use_id") or obj.get("toolUseId") or obj.get("id"), obj.get("content") or obj.get("output"), bool(obj.get("is_error")))
+        emit_tool_end(obj.get("tool_use_id") or obj.get("toolUseId") or obj.get("id"), obj.get("content") or obj.get("output"), bool(obj.get("is_error") or obj.get("isError")))
 
-    for value in candidates:
-        if isinstance(value, str) and value.strip():
-            last_text = value.strip()
+    process_message(obj.get("message"))
+
+    assistant_event = obj.get("assistantMessageEvent")
+    if isinstance(assistant_event, dict):
+        remember_text(assistant_event.get("delta"))
+        process_message(assistant_event.get("partial"))
+        process_message(assistant_event.get("message"))
+
+    messages = obj.get("messages")
+    if isinstance(messages, list):
+        for message in messages:
+            process_message(message)
+
+    tool_results = obj.get("toolResults")
+    if isinstance(tool_results, list):
+        for tool_result in tool_results:
+            if not isinstance(tool_result, dict):
+                continue
+            emit_tool_end(
+                tool_result.get("toolCallId") or tool_result.get("tool_use_id") or tool_result.get("toolUseId") or tool_result.get("id"),
+                tool_result.get("content") or tool_result.get("output"),
+                bool(tool_result.get("isError") or tool_result.get("is_error")),
+            )
 
 for raw in stream_path.read_text().splitlines():
     process_line(raw)

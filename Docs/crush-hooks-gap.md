@@ -44,6 +44,7 @@ Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装
 - 当前没有把 Crush 纳入 hooks setup 列表，因为它还不是正式 hook source。
 - 运行时现在也会检测项目内 `./.crush/logs/crush.log`，并把它作为后续 watcher 的首选线索提示出来。
 - 当前已新增最小 `CrushLogWatcher`，会优先尝试把 JSON 日志行识别成 `PreToolUse` / `PostToolUse` / `PostToolUseFailure`，识别不了时再回退成 `Notification`。
+- 基于本机真实日志样本，当前 watcher 也会优先锁定 non-interactive run 的 `session_id`，并压缩 `buffer(...)` / shutdown / skill bootstrap 这类高噪音日志，只保留更有用的 prompt / request failure 观察信号。
 
 **可实施方案**
 1. 优先调查 Crush 是否有可读的 session/state 文件。

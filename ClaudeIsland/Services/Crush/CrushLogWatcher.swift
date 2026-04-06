@@ -15,6 +15,7 @@ final class CrushLogWatcher {
     private var fileHandle: FileHandle?
     private var source: DispatchSourceFileSystemObject?
     private var lastOffset: UInt64 = 0
+    private var activeCrushSessionId: String?
     private let sessionId: String
     private let cwd: String
     private let logPath: String
@@ -121,6 +122,33 @@ final class CrushLogWatcher {
 
     @discardableResult
     private func emitStructuredEvent(from json: [String: Any]) -> Bool {
+        let message = firstString(
+            json["message"],
+            json["msg"],
+            json["text"],
+            stringify(json["details"])
+        )
+        let level = firstString(json["level"])?.lowercased()
+        let crushSessionId = firstString(
+            json["session_id"],
+            json["sessionId"],
+            nested(json, "session", "id")
+        )
+        let embeddedSessionId = message.flatMap { embeddedSessionID(in: $0) }
+
+        if let message,
+           message.localizedCaseInsensitiveContains("Created session for non-interactive run"),
+           let crushSessionId {
+            activeCrushSessionId = crushSessionId
+        }
+
+        let effectiveCrushSessionId = crushSessionId ?? embeddedSessionId
+        if let activeCrushSessionId,
+           let effectiveCrushSessionId,
+           effectiveCrushSessionId != activeCrushSessionId {
+            return true
+        }
+
         let eventKey = firstString(
             json["event"],
             json["type"],
@@ -224,13 +252,11 @@ final class CrushLogWatcher {
             return true
         }
 
-        if let message = firstString(
-            json["message"],
-            json["msg"],
-            json["text"],
-            stringify(json["details"])
-        ) {
-            emitNotification(message: String(message.prefix(500)))
+        if let message {
+            if isNoiseMessage(message, level: level) {
+                return true
+            }
+            emitNotification(message: condensedMessage(message, level: level, json: json))
             return true
         }
 
@@ -307,6 +333,74 @@ final class CrushLogWatcher {
 
     private func isFailedToolEvent(_ key: String) -> Bool {
         key.contains("tool_error") || key.contains("toolerror") || key.contains("tool_fail") || key.contains("toolfail")
+    }
+
+    private func embeddedSessionID(in message: String) -> String? {
+        let pattern = #"session id:([0-9a-fA-F-]{36})"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsrange = NSRange(message.startIndex..<message.endIndex, in: message)
+        guard let match = regex.firstMatch(in: message, range: nsrange),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: message) else {
+            return nil
+        }
+        return String(message[range])
+    }
+
+    private func isNoiseMessage(_ message: String, level: String?) -> Bool {
+        let lower = message.lowercased()
+        if lower == "initializing mcp clients" || lower == "running in non-interactive mode" {
+            return true
+        }
+        if lower.hasPrefix("successfully loaded builtin skill") ||
+            lower.hasPrefix("subscription cancelled") ||
+            lower.hasPrefix("subscription channel closed") ||
+            lower.hasPrefix("shutdown requested") ||
+            lower.hasPrefix("flushing final batch") ||
+            lower.hasPrefix("all in-flight batches completed") ||
+            lower.hasPrefix("shutdown complete") ||
+            lower.hasPrefix("shutdown completed successfully") ||
+            lower.hasPrefix("app exited") {
+            return true
+        }
+        if lower == "http request" {
+            return true
+        }
+        if lower.hasPrefix("buffer (") &&
+            !lower.contains("prompt sent") &&
+            !lower.contains("prompt responded") &&
+            !(level == "error" || level == "warn") {
+            return true
+        }
+        return false
+    }
+
+    private func condensedMessage(_ message: String, level: String?, json: [String: Any]) -> String {
+        let lower = message.lowercased()
+        if lower.contains("created session for non-interactive run") {
+            return "Created session for non-interactive run"
+        }
+        if lower.contains("prompt sent") {
+            return "Crush prompt sent"
+        }
+        if lower.contains("prompt responded") {
+            return "Crush prompt responded"
+        }
+        if lower == "http request failed",
+           let error = firstString(
+            json["error"],
+            nested(json, "result", "error"),
+            nested(json, "url", "Host")
+           ) {
+            return "Crush HTTP request failed: \(String(error.prefix(400)))"
+        }
+        if let level, (level == "error" || level == "warn"),
+           let error = firstString(json["error"], nested(json, "result", "error")),
+           !error.isEmpty,
+           !message.localizedCaseInsensitiveContains(error) {
+            return "\(String(message.prefix(250))): \(String(error.prefix(200)))"
+        }
+        return String(message.prefix(500))
     }
 
 

@@ -72,11 +72,12 @@ fi
 PROMPT_JSON="$(escape_json "$PROMPT")"
 CWD_JSON="$(escape_json "$PWD")"
 LAST_FILE="$(mktemp -t claude-island-amp-stream.last.XXXXXX)"
+ERROR_FILE="$(mktemp -t claude-island-amp-stream.error.XXXXXX)"
 STDERR_FILE="$(mktemp -t claude-island-amp-stream.stderr.XXXXXX)"
 STREAM_FILE="$(mktemp -t claude-island-amp-stream.jsonl.XXXXXX)"
 
 cleanup() {
-  rm -f "$LAST_FILE" "$STDERR_FILE" "$STREAM_FILE"
+  rm -f "$LAST_FILE" "$ERROR_FILE" "$STDERR_FILE" "$STREAM_FILE"
 }
 
 trap cleanup EXIT
@@ -86,11 +87,13 @@ send_event "{\"hook_event_name\":\"UserPromptSubmit\",\"session_id\":\"$SESSION_
 
 PARSER='import json, pathlib, re, subprocess, sys
 last_path = pathlib.Path(sys.argv[1])
-stream_path = pathlib.Path(sys.argv[2])
-bridge = sys.argv[3]
-session_id = sys.argv[4]
-cwd = sys.argv[5]
+error_path = pathlib.Path(sys.argv[2])
+stream_path = pathlib.Path(sys.argv[3])
+bridge = sys.argv[4]
+session_id = sys.argv[5]
+cwd = sys.argv[6]
 last_text = ""
+result_error = ""
 tool_calls = {}
 seen_pre = set()
 seen_post = set()
@@ -182,8 +185,16 @@ for raw in stream_path.read_text().splitlines():
                 "tool_response": stringify_content(item.get("content")),
                 "error": stringify_content(item.get("content")) if is_error else None,
             })
+    elif msg_type == "result":
+        if obj.get("is_error"):
+            result_error = stringify_content(obj.get("error") or obj.get("message") or obj.get("subtype"))
+        elif isinstance(obj.get("result"), str) and obj.get("result").strip():
+            last_text = obj["result"].strip()
+        elif isinstance(obj.get("message"), str) and obj.get("message").strip():
+            last_text = obj["message"].strip()
 
-last_path.write_text(last_text)'
+last_path.write_text(last_text)
+error_path.write_text(result_error)'
 
 if [ "$AMP_BIN" = "$AMP_WRAPPER" ]; then
   "$AMP_BIN" --execute "$PROMPT" --stream-json 2>"$STDERR_FILE" | tee "$STREAM_FILE"
@@ -196,20 +207,28 @@ BRIDGE_PATH=""
 if [ -x "$BRIDGE" ]; then
   BRIDGE_PATH="$BRIDGE"
 fi
-python3 -c "$PARSER" "$LAST_FILE" "$STREAM_FILE" "$BRIDGE_PATH" "$SESSION_ID" "$PWD"
+python3 -c "$PARSER" "$LAST_FILE" "$ERROR_FILE" "$STREAM_FILE" "$BRIDGE_PATH" "$SESSION_ID" "$PWD"
 
 LAST_ASSISTANT_MESSAGE=""
 if [ -f "$LAST_FILE" ]; then
   LAST_ASSISTANT_MESSAGE="$(cat "$LAST_FILE")"
 fi
 
-if [ $STATUS -eq 0 ]; then
+RESULT_ERROR=""
+if [ -f "$ERROR_FILE" ]; then
+  RESULT_ERROR="$(cat "$ERROR_FILE")"
+fi
+
+if [ $STATUS -eq 0 ] && [ -z "$RESULT_ERROR" ]; then
   if [ -n "$LAST_ASSISTANT_MESSAGE" ]; then
     LAST_JSON="$(escape_json "$LAST_ASSISTANT_MESSAGE")"
     send_event "{\"hook_event_name\":\"Stop\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"last_assistant_message\":$LAST_JSON}"
   else
     send_event "{\"hook_event_name\":\"Stop\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"message\":\"Amp stream-json finished\"}"
   fi
+elif [ -n "$RESULT_ERROR" ]; then
+  notify_error "$RESULT_ERROR"
+  send_event "{\"hook_event_name\":\"Stop\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"message\":\"Amp stream-json reported an execution error\"}"
 else
   ERROR_OUTPUT="$(cat "$STDERR_FILE")"
   if [ -n "$ERROR_OUTPUT" ]; then

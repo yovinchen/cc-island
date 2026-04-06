@@ -226,6 +226,7 @@
 - `AMP_SETTINGS_FILE` 自定义 settings 路径诊断
 - `amp-stream` 最小 `--stream-json` helper 原型
 - `amp-stream` 的 best-effort `tool_use / tool_result` 提取
+- `amp-stream` 已基于真实样本识别 `type:"result"` + `is_error:true` 的失败结果
 
 **剩余缺口**
 - `stream-json` 仍未形成稳定 watcher 级第二入口
@@ -267,6 +268,8 @@
 **当前状态**
 - `Crush` 已有最小 wrapper 原型 + 日志 watcher 原型
 - `Pi` 已有最小 wrapper 原型 + json helper 原型
+- `Crush` 已开始按真实日志样本做 session 过滤和噪音压缩
+- `Pi` 已开始按真实样本兼容 `message_update / turn_end / agent_end`
 
 **建议**
 - `Crush` 继续从当前 `./.crush/logs/crush.log` watcher 原型往结构化解析推进
