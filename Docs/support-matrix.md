@@ -37,7 +37,7 @@
 | Copilot CLI | 部分支持 | `config.json` hooks | ✅ | ✅ | ⚠️ | 隐式审批和 `modifiedArgs` 原型已接入，仍缺实机闭环 |
 | OpenCode | 正式接入 | JS plugin | ✅ | ✅ | — | plugin 路线稳定，先做只读增强 |
 | Droid | 正式接入 | Factory `settings.json` hooks | ✅ | ✅ | ✅ | Claude-compatible `hookSpecificOutput` |
-| Kimi CLI | 部分支持 | `config.toml` hooks | ✅ | ✅ | ⚠️ | 首版事件覆盖已接近官方 13 事件 |
+| Kimi CLI | 部分支持 | `config.toml` hooks | ✅ | ✅ | ⚠️ | 首版事件覆盖已接近官方 13 事件，事件字段提取已补强 |
 | Amp CLI | 部分支持 | global plugin + `amp-exec` + `amp-stream` | ✅ | ✅ | ⚠️ | 审批主要在 plugin 路线；stream-json 仍是 helper-first |
 | Qoder CLI | 未接入 | — | — | — | — | 官方 CLI hooks 文档仍冲突，当前不拆 source |
 | Pi Coding Agent | 部分支持 | `pi` / `pi-json` helpers | ✅ | ✅ | — | `--mode json` 解析已覆盖单工具与多工具串行样本 |
@@ -89,7 +89,7 @@
 | Copilot CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | payload fallback / `modifiedArgs` 原型已接入 |
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
-| Kimi CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件面持续向官方 13 事件对齐 |
+| Kimi CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件面持续向官方 13 事件对齐，`StopFailure / Subagent* / Notification` 可读性已补强 |
 | Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream` |
 | Qoder CLI | — | — | — | — | — | docs-only |
 | Pi Coding Agent | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher |

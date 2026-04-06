@@ -664,6 +664,8 @@ enum EventMapper {
             input["error"],
             input["error_message"],
             input["errorMessage"],
+            input["error_type"],
+            input["errorType"],
             input["stderr"],
             nested(input, "partialResult", "error"),
             nested(input, "partialResult", "stderr"),
@@ -744,7 +746,8 @@ enum EventMapper {
             input["last_agent_message"],
             input["lastAgentMessage"],
             input["prompt_response"],
-            input["promptResponse"]
+            input["promptResponse"],
+            input["response"]
         ) ?? firstString(
             nested(input, "assistant", "message"),
             nested(input, "result", "message"),
@@ -759,6 +762,10 @@ enum EventMapper {
     private static func extractPrompt(from input: [String: Any]) -> String? {
         if let direct = firstString(input["prompt"], input["text"], input["message"]) {
             return direct
+        }
+
+        if let agentPrompt = firstString(input["agent_prompt"], input["agentPrompt"]) {
+            return agentPrompt
         }
 
         if let windsurfPrompt = firstString(nested(input, "tool_info", "user_prompt")) {
@@ -781,6 +788,7 @@ enum EventMapper {
         firstString(
             input["notification_type"],
             input["notificationType"],
+            input["severity"],
             nested(input, "details", "type")
         )
     }
@@ -810,6 +818,18 @@ enum EventMapper {
             input["message"],
             input["action"],
             input["mode"],
+            input["agent_name"],
+            input["agentName"],
+            input["error_message"],
+            input["errorMessage"],
+            input["error_type"],
+            input["errorType"],
+            input["title"],
+            input["body"],
+            input["sink"],
+            input["reason"],
+            input["trigger"],
+            input["source"],
             input["compact_summary"],
             input["compactSummary"],
             input["model"],

@@ -51,7 +51,8 @@ Kimi CLI **现已完成 hooks 首版接入**。当前通过 `config.toml` 的受
 1. 已复用 Codex 的 TOML 管理思路，实现 `KimiHookSource`。
 2. 当前 hooks block 已继续补到更接近官方 13 事件，包含 `PostToolUseFailure`、`StopFailure`、`SubagentStart` 等补点。
 3. 已把 Kimi 事件接到 `EventMapper` / `PermissionHandler` / `HookSocketServer` 的隐式审批链路。
-4. ACP 继续单独作为第二阶段，不和 hooks 首版耦合。
+4. 当前 `EventMapper` 已继续补 `error_message / error_type / agent_name / response / title / body / sink / trigger / reason` 等字段提取，让 `StopFailure`、`Subagent*`、`Notification`、`PostCompact` 这类事件在 UI 中更可读。
+5. ACP 继续单独作为第二阶段，不和 hooks 首版耦合。
 
 **主要阻塞**
 - 当前主要阻塞只剩 ACP 路线，以及更完整的事件覆盖和真实联调验证。
