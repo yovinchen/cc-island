@@ -37,6 +37,9 @@
 - `Cline / Cline CLI`
   - 在 native `cancel` 基础上继续补返回面
   - 当前已补项目级 `.clinerules/hooks` 的存在时托管
+- `Qoder`
+  - 保持单一 source，不拆 `qoder_cli`
+  - 当前已补项目级 `.qoder/settings.json` / `.qoder/settings.local.json` 的存在时托管
 
 ### Batch 3: 高不确定性对象
 
