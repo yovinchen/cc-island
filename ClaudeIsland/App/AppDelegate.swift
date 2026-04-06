@@ -12,6 +12,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var appDidBecomeActiveObserver: NSObjectProtocol?
 
     static var shared: AppDelegate?
+    static var isRunningTests: Bool {
+        Foundation.ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
     let updater: SPUUpdater
     private let userDriver: NotchUserDriver
 
@@ -38,6 +41,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if Self.isRunningTests {
+            return
+        }
+
         if !ensureSingleInstance() {
             NSApplication.shared.terminate(nil)
             return
@@ -124,6 +131,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if Self.isRunningTests {
+            return
+        }
+
         MixpanelTracker.withInstance { mixpanel in
             mixpanel.flush()
         }

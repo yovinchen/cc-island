@@ -218,3 +218,12 @@ final class QuotaStore: ObservableObject {
         return defaults.bool(forKey: key)
     }
 }
+
+#if DEBUG
+extension QuotaStore {
+    func _replaceRecordsForTesting(_ newRecords: [QuotaProviderRecord], lastGlobalRefreshAt: Date? = nil) {
+        records = Dictionary(uniqueKeysWithValues: newRecords.map { ($0.id, $0) })
+        self.lastGlobalRefreshAt = lastGlobalRefreshAt
+    }
+}
+#endif
