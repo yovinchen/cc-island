@@ -229,68 +229,23 @@ Claude Island App (NotchView)
 | Cline | 部分支持 | 与 CLI 合并审计，当前已有首版 hooks 接入 | [docs/cline-hooks-gap.md](docs/cline-hooks-gap.md) |
 | Copilot | 部分支持 | Copilot CLI hooks 已接入，但 VS / JetBrains 插件未专项接入 | [docs/copilot-hooks-gap.md](docs/copilot-hooks-gap.md) |
 
-| 工具 | 配置文件 | 配置目录 | Hook 类型 | 注册事件数 | 权限超时 |
-|------|---------|---------|----------|-----------|---------|
-| **Claude Code** | `settings.json` | `~/.claude` | Bridge CLI (`command`) | 10 | 86400s (24h) |
-| **Codex CLI** | `hooks.json` + `config.toml` | `~/.codex` | Bridge CLI (`command`) + Bridge CLI (`notify`) | 2 Hooks + 1 Notify | 30s |
-| **Codex Desktop** | — | `~/.codex` | `session_index.jsonl` + transcript 事件监听 | 3（合成事件） | — |
-| **Gemini CLI** | `settings.json` | `~/.gemini` / `.gemini` | Bridge CLI (`command`) | 8 | 30s |
-| **Cursor** | `hooks.json` | `~/.cursor` | Bridge CLI (`command`) | 6 | 30s |
-| **OpenCode** | `claude-island.js` | `~/.config/opencode/plugins` | JS 插件 | 5 | 5s |
-| **Copilot** | `config.json` | `~/.copilot` | Bridge CLI (`command`) | 4 | 默认 |
-| **Droid** | `settings.json` | `~/.factory` | Bridge CLI (`command`) | 9 | 默认 |
-| **Qoder** | `settings.json` | `~/.qoder` | Bridge CLI (`command`) | 5 | 默认 30s |
-| **CodeBuddy** | `settings.json` | `~/.codebuddy` | Bridge CLI (`command`) | 7 | 默认 60s |
-| **Trae** | — | `~/.trae` | — | — | — |
+### 统一矩阵
 
-> 🚫 Trae 暂不支持：Trae IDE 使用 `.rules` 配置（Markdown 格式），Trae Agent 使用 YAML 配置，均不提供 Hooks API。待官方支持后适配。
+完整的 **Hook 支持矩阵** 和 **功能支持矩阵** 已统一整理到 [Docs/support-matrix.md](Docs/support-matrix.md)。
 
-### Hook 支持矩阵
+这份矩阵以当前代码实现为准，统一覆盖：
+- App / IDE
+- CLI / Desktop
+- VS 插件 / IDE 宿主
 
-各 AI 工具对 Hook 事件的支持情况：
+并且明确区分：
+- `正式接入`
+- `部分支持`
+- `宿主级支持`
+- `未接入 / 仅文档`
 
-| Hook 事件 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
-|-----------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
-| SessionStart | ✅ | ✅ | 📁 | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| SessionEnd | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| UserPromptSubmit | ✅ | ✅ | 📁 | ✅¹ | ✅² | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| PreToolUse | ✅ | ❌ | ❌ | ✅ | ✅³ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PostToolUse | ✅ | ❌ | ❌ | ✅ | ✅⁴ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PermissionRequest | ✅ | ❌ | ❌ | ❌ | ✅⁵ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Stop | ✅ | ✅ | 📁 | ✅⁶ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| SubagentStop | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Notification | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| PreCompact | ✅ | ❌ | ❌ | ✅⁷ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+> 旧的按事件逐项展开矩阵已经过时，不再作为当前仓库的权威口径；请以 [Docs/support-matrix.md](Docs/support-matrix.md) 和各份 gap 文档为准。
 
-> ¹ Gemini `BeforeAgent` → `UserPromptSubmit`
-> ² Cursor `beforeSubmitPrompt` → `UserPromptSubmit`
-> ³ Cursor `beforeReadFile` → `PreToolUse`
-> ⁴ Cursor `afterFileEdit` → `PostToolUse`
-> ⁵ Cursor `beforeShellExecution`/`beforeMCPExecution` → `PermissionRequest`
-> ⁶ Gemini `AfterAgent` → `Stop`
-> ⁷ Gemini `PreCompress` → `PreCompact`
-
-> ✅ = 支持　❌ = 不支持　📁 = 通过文件监听实现（非 Hook）　🚫 = 暂不支持（工具未提供 Hooks API）
-
-### 功能支持矩阵
-
-各 AI 工具的功能支持情况：
-
-| 功能 | Claude Code | Codex CLI | Codex Desktop | Gemini CLI | Cursor | OpenCode | Copilot | Droid | Qoder | CodeBuddy | Trae |
-|------|:-----------:|:---------:|:-------------:|:----------:|:------:|:--------:|:-------:|:-----:|:-----:|:---------:|:----:|
-| 实时状态监控 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| 工具执行追踪 | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | 🚫 |
-| 权限审批（Notch） | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 权限响应格式 | hookSpecificOutput | — | — | — | `{continue, permission}` | — | — | — | — | — | — |
-| Always Allow (acceptEdits) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
-| Bypass (bypassPermissions) | ✅ | ❌ | — | — | — | — | — | — | — | — | — |
-| 聊天记录解析 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 子代理追踪 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 上下文压缩通知 | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| StatusLine 集成 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 终端标题 (Ghostty) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| 终端跳转 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
-| macOS 系统通知 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 |
 ### 各 CLI Hook 调用方式详解
 
 #### Claude Code ✅ 完整支持
