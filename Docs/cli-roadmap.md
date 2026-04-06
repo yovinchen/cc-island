@@ -150,10 +150,11 @@
 **当前已完成**
 - `preToolUse` 隐式审批
 - 更宽松的 `toolArgs / toolResult / structured text` 提取
+- `modifiedArgs` 原型通路已打通
 
 **剩余缺口**
 - 还没有真实联调闭环证明所有 payload 变体都覆盖到了
-- `modifiedArgs` 未实现
+- `modifiedArgs` 仍需真实样本验证
 
 **建议**
 - 继续补 payload 容错，不急着扩新协议
