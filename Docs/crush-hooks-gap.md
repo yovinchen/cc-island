@@ -49,6 +49,7 @@ Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装
 - 当前还已经拿到一份 provider 正常成功返回的真实日志样本：它证明 `HTTP Response 200 OK` 与 PostHog/shutdown 收尾日志会大量刷屏，因此这类成功/遥测噪音现在也会被优先压掉。
 - 基于 provider 正常成功路径的真实日志样本，当前 watcher 也已经开始从 `HTTP Response` 的 SSE body 里提炼第一段模型文本，避免成功场景下只剩抽象的 `prompt responded`。
 - 对于同一成功样本里较短、明显属于标题生成阶段的 `HTTP Response`，当前 watcher 也会优先压掉，尽量只保留主回答对应的成功信号。
+- 现在还已经拿到一份“明确要求使用 bash 工具”的成功样本；结论是日志里依然只暴露 HTTP/SSE 与埋点层信号，没有稳定的本地 tool-level schema，因此当前路线仍应停留在高层 watcher，而不是伪造工具级协议。
 
 **可实施方案**
 1. 优先调查 Crush 是否有可读的 session/state 文件。

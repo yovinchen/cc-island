@@ -271,10 +271,13 @@
 - `Crush` 已开始按真实日志样本做 session 过滤和噪音压缩
 - `Pi` 已开始按真实样本兼容 `message_update / turn_end / agent_end`
 - `Pi` 已拿到 helper 路径的真实 tool-calling 回归样本
+- `Pi` 已拿到 helper 路径里多个不同工具串行执行的真实样本
 - `Crush` 已拿到 provider 成功路径的真实日志样本
+- `Crush` 在“明确使用工具”的成功样本里，仍然没有暴露稳定 tool-level 日志 schema
 
 **建议**
 - `Crush` 继续从当前 `./.crush/logs/crush.log` watcher 原型往结构化解析推进
+- `Crush` 暂时不要假设存在本地 tool-level schema，优先继续打磨高层成功/失败/会话观察
 - 继续避免先碰 MCP/权限
 - `Pi` 继续从当前 `--mode json` helper 往更稳定的 json/rpc 解析推进
 
