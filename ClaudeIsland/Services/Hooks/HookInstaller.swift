@@ -135,6 +135,7 @@ struct HookInstaller {
             ("claude-island-amp", "sh", "claude-island-amp"),
             ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
+            ("claude-island-crush", "sh", "claude-island-crush"),
         ]
 
         for helper in helperScripts {
@@ -268,6 +269,13 @@ struct HookInstaller {
            fm.fileExists(atPath: "/usr/local/bin/amp") ||
            fm.fileExists(atPath: "/opt/homebrew/bin/amp") {
             installed.append(.ampCLI)
+        }
+
+        // Crush: check ~/.config/crush or common executable locations
+        if fm.fileExists(atPath: "\(home)/.config/crush") ||
+           fm.fileExists(atPath: "/usr/local/bin/crush") ||
+           fm.fileExists(atPath: "/opt/homebrew/bin/crush") {
+            installed.append(.crush)
         }
 
         // OpenCode: check ~/.config/opencode

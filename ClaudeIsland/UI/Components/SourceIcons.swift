@@ -65,6 +65,8 @@ struct SourceIcon: View {
             GeminiPixelIcon(size: size)
         case .ampCLI:
             OpenCodePixelIcon(size: size)
+        case .crush:
+            OpenCodePixelIcon(size: size)
         case .trae:
             TraePixelIcon(size: size)
         case .unknown:

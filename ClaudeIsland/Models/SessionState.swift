@@ -24,6 +24,7 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
     case kimiCLI = "kimi_cli"
     case kiroCLI = "kiro_cli"
     case ampCLI = "amp_cli"
+    case crush
     case trae
     case unknown
 
@@ -64,6 +65,8 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
             self = .kiroCLI
         case "amp", "amp_cli":
             self = .ampCLI
+        case "crush":
+            self = .crush
         case "trae":
             self = .trae
         default:
@@ -89,6 +92,7 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
         case .kimiCLI: return "Kimi CLI"
         case .kiroCLI: return "Kiro CLI"
         case .ampCLI: return "Amp CLI"
+        case .crush: return "Crush"
         case .trae: return "Trae"
         case .unknown: return "Unknown"
         }
