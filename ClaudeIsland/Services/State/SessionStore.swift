@@ -128,6 +128,11 @@ actor SessionStore {
                session.hookMessage == nil {
                 session.hookMessage = diagnostic
             }
+            if event.source == .crush {
+                await MainActor.run {
+                    CrushLogWatcherManager.shared.startWatching(sessionId: sessionId, cwd: event.cwd)
+                }
+            }
         }
 
         session.pid = event.pid
@@ -212,6 +217,11 @@ actor SessionStore {
 
         if event.event == "Stop" {
             session.subagentState = SubagentState()
+            if event.source == .crush {
+                await MainActor.run {
+                    CrushLogWatcherManager.shared.stopWatching(sessionId: sessionId)
+                }
+            }
         }
 
         sessions[sessionId] = session
@@ -989,6 +999,9 @@ actor SessionStore {
     private func processSessionEnd(sessionId: String) async {
         sessions.removeValue(forKey: sessionId)
         cancelPendingSync(sessionId: sessionId)
+        await MainActor.run {
+            CrushLogWatcherManager.shared.stopWatching(sessionId: sessionId)
+        }
         await MainActor.run {
             TerminalTitleManager.shared.clearTitle(for: sessionId)
         }
