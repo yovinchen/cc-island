@@ -354,6 +354,24 @@ class CodexSessionWatcher {
                 message: payload["message"] as? String
             )
 
+        case "token_count":
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: resolvedCwd,
+                event: "Notification",
+                status: "unknown",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: nil,
+                notificationType: "token_count",
+                message: tokenCountSummary(from: payload),
+                rateLimits: anyCodableMap(payload["rate_limits"])
+            )
+
         case "turn_aborted":
             return HookEvent(
                 sessionId: sessionId,
@@ -584,6 +602,33 @@ class CodexSessionWatcher {
         }
 
         return nil
+    }
+
+    private func anyCodableMap(_ raw: Any?) -> [String: AnyCodable]? {
+        guard let dict = raw as? [String: Any] else { return nil }
+        return dict.reduce(into: [String: AnyCodable]()) { partialResult, entry in
+            partialResult[entry.key] = AnyCodable(entry.value)
+        }
+    }
+
+    private func tokenCountSummary(from payload: [String: Any]) -> String? {
+        guard let rateLimits = payload["rate_limits"] as? [String: Any] else {
+            return nil
+        }
+
+        let planType = rateLimits["plan_type"] as? String
+        let limitId = rateLimits["limit_id"] as? String
+
+        if let planType, let limitId {
+            return "Codex Desktop token update (\(limitId), \(planType))"
+        }
+        if let planType {
+            return "Codex Desktop token update (\(planType))"
+        }
+        if let limitId {
+            return "Codex Desktop token update (\(limitId))"
+        }
+        return "Codex Desktop token update"
     }
 
     private func extractCustomToolOutput(_ raw: Any?) -> String? {
