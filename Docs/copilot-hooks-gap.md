@@ -62,6 +62,7 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 2. 当前已补通 `modifiedArgs` 原型通路，会在 allow 且有原始 `tool_input` 时回传该字段
 3. 当前 Copilot 返回值同时带 `permissionDecisionReason` 与 `reason`，提高对不同 CLI 变体的兼容性。
 4. EventMapper 已继续补 `toolArgs / modifiedArgs / partialResult / result / assistant / errorMessage` 等常见嵌套字段提取，但还未做真实 CLI 端联调验证
+5. 基于本机 `copilot -p --output-format json` 样本，当前桥接也已开始识别 `user.message`、`assistant.message`、`assistant.turn_end`、`result`、`session.mcp_*` 等 JSON 事件形状，为后续非 hook 观察路径预留兼容层。
 
 ---
 

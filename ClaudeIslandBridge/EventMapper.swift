@@ -182,6 +182,8 @@ enum EventMapper {
         return firstString(
             input["session_id"],
             input["sessionId"],
+            nested(input, "data", "sessionId"),
+            nested(input, "data", "interactionId"),
             input["taskId"],
             input["thread_id"],
             input["threadId"],
@@ -264,6 +266,7 @@ enum EventMapper {
         let key = raw
             .replacingOccurrences(of: "_", with: "")
             .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: ".", with: "")
             .lowercased()
 
         if source?.lowercased() == "gemini" {
@@ -325,6 +328,14 @@ enum EventMapper {
             "agentturncomplete": "Stop",
             // Copilot-specific aliases
             "tooluse": "PreToolUse",
+            "usermessage": "UserPromptSubmit",
+            "assistantturnstart": "Notification",
+            "assistantmessagedelta": "Notification",
+            "assistantmessage": "Stop",
+            "assistantturnend": "Stop",
+            "sessionmcpserverstatuschanged": "Notification",
+            "sessionmcpserversloaded": "Notification",
+            "sessiontoolsupdated": "Notification",
             // Cursor-specific events
             "beforesubmitprompt": "UserPromptSubmit",
             "beforeshellexecution": "PermissionRequest",
@@ -751,10 +762,12 @@ enum EventMapper {
         ) ?? firstString(
             nested(input, "assistant", "message"),
             nested(input, "result", "message"),
-            nested(input, "error", "message")
+            nested(input, "error", "message"),
+            nested(input, "data", "content")
         ) ?? extractTextContent(from: input["message"]) ??
             extractTextContent(from: nested(input, "assistant", "content")) ??
             extractTextContent(from: nested(input, "result", "content")) ??
+            extractTextContent(from: nested(input, "data", "content")) ??
             extractTextContent(from: input["content"]) ??
             extractTextContent(from: nested(input, "message", "content"))
     }
@@ -762,6 +775,13 @@ enum EventMapper {
     private static func extractPrompt(from input: [String: Any]) -> String? {
         if let direct = firstString(input["prompt"], input["text"], input["message"]) {
             return direct
+        }
+
+        if let copilotPrompt = firstString(
+            nested(input, "data", "content"),
+            nested(input, "data", "transformedContent")
+        ) {
+            return copilotPrompt
         }
 
         if let agentPrompt = firstString(input["agent_prompt"], input["agentPrompt"]) {
@@ -837,12 +857,18 @@ enum EventMapper {
             nested(input, "result", "message"),
             nested(input, "result", "errorMessage"),
             nested(input, "error", "message"),
+            nested(input, "data", "content"),
+            nested(input, "data", "model"),
+            nested(input, "data", "serverName"),
+            nested(input, "data", "status"),
             nested(input, "details", "message"),
             nested(input, "details", "title"),
             nested(input, "details", "description")
         ) ?? stringify(input["selected_tools"]) ??
             stringify(nested(input, "assistant", "content")) ??
             stringify(nested(input, "result", "content")) ??
+            stringify(nested(input, "data", "servers")) ??
+            stringify(nested(input, "data", "filesModified")) ??
             stringify(input["content"]) ??
             stringify(input["selectedTools"]) ??
             stringify(input["details"])
