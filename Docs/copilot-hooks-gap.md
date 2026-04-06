@@ -25,7 +25,7 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 
 ## 当前已支持
 
-`CopilotHookSource` 注册了 **6 个事件**（见 `HookInstaller.swift:1289`）：
+`CopilotHookSource` 当前已注册 **10 个事件**：
 
 | 功能 | 状态 | 说明 |
 |------|:----:|------|
@@ -34,7 +34,11 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 | `sessionEnd` | ✅ | 会话结束 |
 | `preToolUse` | ✅ | 工具执行前 |
 | `postToolUse` | ✅ | 工具执行后 |
+| `postToolUseFailure` | ✅ | 工具失败后 |
+| `errorOccurred` | ✅ | 会话级错误 |
 | `userPromptSubmitted` | ✅ | 用户提交 prompt |
+| `preCompact` | ✅ | 上下文压缩前 |
+| `notification` | ✅ | 通知事件 |
 | `stop` | ✅ | 任务完成（非官方事件名，依赖 Copilot 是否实际触发） |
 | EventMapper 事件标准化 | ✅ | `sessionstart`→`SessionStart` 等 camelCase→PascalCase 映射 |
 
@@ -60,33 +64,13 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 
 ---
 
-### 2. postToolUseFailure 事件 (中优先级)
+### 2. postToolUseFailure / errorOccurred / preCompact（已接入）
 
-**官方行为**: `postToolUseFailure` 在工具执行失败后触发，与 `postToolUse`（仅成功时触发）分离。
+**当前行为**: 当前安装器已经写入 `postToolUseFailure`、`errorOccurred`、`preCompact`、`notification`。
 
-**当前行为**: 未注册。工具失败信息无法被监控。
-
-**改进方案**: 在事件列表中添加 `"postToolUseFailure"`。EventMapper 已有 `posttoolusefailure` → `PostToolUseFailure` 映射。
-
----
-
-### 3. errorOccurred 事件 (中优先级)
-
-**官方行为**: 会话级错误（非单个工具失败）会触发 `errorOccurred`。
-
-**当前行为**: 未注册。EventMapper 已有 `erroroccurred` → `Notification` 映射。
-
-**改进方案**: 在事件列表中添加 `"errorOccurred"`，映射为 `Notification` 事件。
-
----
-
-### 4. preCompact 事件 (低优先级)
-
-**官方行为**: 上下文压缩前触发，可在压缩前执行自定义逻辑。
-
-**当前行为**: 未注册。EventMapper 已有 `precompact` → `PreCompact` 映射。
-
-**改进方案**: 在事件列表中添加 `"preCompact"`。
+**剩余价值**:
+1. 继续完善这些事件的字段提取
+2. 联调确认 `notification` 是否确实被 Copilot CLI 触发
 
 ---
 
@@ -135,13 +119,13 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 | 项目级配置 | `~/.claude/` | `.github/hooks/*.json` | ❌ 仅全局 |
 | 配置格式 | 嵌套 `{matcher, hooks}` | 扁平 `{hooks: {event: [{type, command}]}}` | ✅ |
 | 事件名风格 | PascalCase | camelCase | ✅ EventMapper 转换 |
-| 官方事件总数 | 12+ | 9 | 6/9 已注册 |
+| 官方事件总数 | 12+ | 9 | 9+/9 近似覆盖 |
 | preToolUse 拦截 | ✅ exitCode 控制 | ✅ JSON stdout 控制 | ❌ 无返回值 |
-| postToolUseFailure | ✅ | ✅ | ❌ 未注册 |
+| postToolUseFailure | ✅ | ✅ | ✅ 已注册 |
 | PermissionRequest | ✅ socket 审批 | ✅ stdout 审批 | ❌ 未注册 |
 | Notification | ✅ | ❌ 无此事件 | — |
-| errorOccurred | ❌（无对应） | ✅ | ❌ 未注册 |
-| PreCompact | ✅ | ✅ | ❌ 未注册 |
+| errorOccurred | ❌（无对应） | ✅ | ✅ 已注册 |
+| PreCompact | ✅ | ✅ | ✅ 已注册 |
 | SubagentStop | ✅ | ❌ | — |
 | Prompt Hook | ❌ | ✅ sessionStart 可注入 prompt | — |
 | 超时配置 | `timeout` 字段 | `timeoutSec` 字段 | ❌ 未配置 |

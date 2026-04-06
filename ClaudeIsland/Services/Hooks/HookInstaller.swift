@@ -1522,8 +1522,8 @@ struct AmpHookSource: HookSource {
         export default function (amp: PluginAPI) {
           let sessionId = nextSessionId()
 
-          amp.on('session.start', () => {
-            sessionId = nextSessionId()
+          amp.on('session.start', (event) => {
+            sessionId = stableSessionId(event) || nextSessionId()
             send({
               hook_event_name: 'SessionStart',
               session_id: sessionId,
@@ -1587,6 +1587,20 @@ struct AmpHookSource: HookSource {
 
         function nextSessionId() {
           return `amp-${randomUUID()}`
+        }
+
+        function stableSessionId(event) {
+          const candidates = [
+            event?.sessionID,
+            event?.sessionId,
+            event?.threadID,
+            event?.threadId,
+            event?.thread?.id,
+            event?.trajectoryID,
+            event?.trajectoryId,
+          ]
+          const value = candidates.find((candidate) => typeof candidate === 'string' && candidate.length > 0)
+          return value ? `amp-${value}` : undefined
         }
 
         function spawnBridge(input) {
