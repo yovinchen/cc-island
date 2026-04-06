@@ -631,8 +631,12 @@ struct ClineHookSource: HookSource {
             let hookURL = hooksDirectoryURL.appendingPathComponent(hookName)
             let script = """
             #!/bin/zsh
-            \(command) >/dev/null 2>&1 || true
-            print -r -- '{"cancel":false}'
+            RESPONSE="$(\(command) 2>/dev/null)" || true
+            if [ -n "$RESPONSE" ]; then
+              print -r -- "$RESPONSE"
+            else
+              print -r -- '{"cancel":false}'
+            fi
             """
             try script.write(to: hookURL, atomically: true, encoding: .utf8)
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hookURL.path)

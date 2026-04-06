@@ -575,6 +575,8 @@ class HookSocketServer {
             return buildCursorResponse(decision: decision, alwaysAllow: alwaysAllow)
         } else if source == .copilot || source == .ampCLI {
             return buildCopilotResponse(decision: decision, reason: reason)
+        } else if source == .cline {
+            return buildClineResponse(decision: decision, reason: reason)
         } else if source == .windsurf {
             return buildBlockingMessageResponse(decision: decision, reason: reason)
         } else if source == .qoder || source == .codebuddy || source == .codexCLI || source == .kimiCLI {
@@ -621,6 +623,20 @@ class HookSocketServer {
         guard decision != "allow" else { return Data() }
         let message = reason ?? "Denied by Claude Island"
         return message.data(using: .utf8)
+    }
+
+    /// Build Cline hook response format.
+    /// Cline pre-tool hooks use stdout JSON like {"cancel":true|false,"errorMessage":"..."}.
+    private func buildClineResponse(decision: String, reason: String?) -> Data? {
+        var response: [String: Any] = [
+            "cancel": decision != "allow"
+        ]
+
+        if decision != "allow" {
+            response["errorMessage"] = reason ?? "Cancelled by Claude Island"
+        }
+
+        return try? JSONSerialization.data(withJSONObject: response, options: [])
     }
 
     /// Build Qoder/CodeBuddy PreToolUse permission response format.

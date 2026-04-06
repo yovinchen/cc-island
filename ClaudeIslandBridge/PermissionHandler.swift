@@ -22,7 +22,7 @@ enum PermissionHandler {
         let source = payload["source"] as? String ?? ""
 
         guard event == "PreToolUse" else { return false }
-        guard source == "qoder" || source == "codebuddy" || source == "codex_cli" || source == "codex" || source == "kimi_cli" || source == "copilot" || source == "amp_cli" || source == "windsurf" else {
+        guard source == "qoder" || source == "codebuddy" || source == "codex_cli" || source == "codex" || source == "kimi_cli" || source == "copilot" || source == "amp_cli" || source == "windsurf" || source == "cline" else {
             return false
         }
 
