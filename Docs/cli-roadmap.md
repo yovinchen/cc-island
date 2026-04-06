@@ -222,6 +222,7 @@
 - plugin session id 更稳定
 - `AMP_SETTINGS_FILE` 自定义 settings 路径诊断
 - `amp-stream` 最小 `--stream-json` helper 原型
+- `amp-stream` 的 best-effort `tool_use / tool_result` 提取
 
 **剩余缺口**
 - `stream-json` 仍未形成稳定 watcher 级第二入口
