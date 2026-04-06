@@ -281,7 +281,7 @@ struct ToolSetupRow: View {
         case .windsurf: return "~/.codeium/windsurf/hooks.json (+ managed .windsurf/hooks.json when present / diagnose-only /Library/Application Support/Windsurf/hooks.json)"
         case .kimiCLI: return "~/.kimi/config.toml (+ ~/.claude-island/bin/claude-island-kimi-print for print-mode fallback)"
         case .kiroCLI: return "~/.kiro/agents/claude-island.json + ~/.claude-island/bin/claude-island-kiro"
-        case .ampCLI: return "~/.config/amp/plugins/claude-island.ts"
+        case .ampCLI: return "~/.config/amp/plugins/claude-island.ts (+ diagnose-only .amp/settings.json / .amp/plugins/ workspace layers)"
         case .pi: return "~/.claude-island/bin/claude-island-pi + claude-island-pi-json"
         case .crush: return "~/.claude-island/bin/claude-island-crush"
         case .opencode: return "~/.config/opencode/plugins/"

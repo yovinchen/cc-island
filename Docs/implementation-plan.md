@@ -22,6 +22,8 @@
   - 下一步才考虑更深托管
 - `Pi / Crush`
   - helper 已进入 auto-repair / watcher 链路
+- `Amp CLI`
+  - 当前已补项目级 `.amp/settings.json` / `.amp/plugins/` 的运行时诊断
 
 ### Batch 2: 部分支持对象补强
 

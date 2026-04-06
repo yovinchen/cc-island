@@ -348,6 +348,23 @@ actor SessionStore {
                 return "Local Qoder config detected at .qoder/settings.local.json; Claude Island will manage that layer alongside your user-level hooks when present."
             }
             return nil
+        case .ampCLI:
+            let projectDir = URL(fileURLWithPath: cwd).appendingPathComponent(".amp")
+            let projectSettings = projectDir.appendingPathComponent("settings.json").path
+            let projectPluginsDir = projectDir.appendingPathComponent("plugins").path
+            let hasProjectSettings = FileManager.default.fileExists(atPath: projectSettings)
+            let hasProjectPlugins = FileManager.default.fileExists(atPath: projectPluginsDir)
+
+            if hasProjectSettings && hasProjectPlugins {
+                return "Project Amp settings detected at .amp/settings.json and .amp/plugins/; these workspace layers may augment or override the global Claude Island plugin."
+            }
+            if hasProjectSettings {
+                return "Project Amp settings detected at .amp/settings.json; they may augment or override the global Claude Island plugin."
+            }
+            if hasProjectPlugins {
+                return "Project Amp plugins detected under .amp/plugins/; they may augment or override the global Claude Island plugin."
+            }
+            return nil
         case .crush:
             let path = URL(fileURLWithPath: cwd)
                 .appendingPathComponent(".crush/logs/crush.log")

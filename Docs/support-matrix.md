@@ -38,7 +38,7 @@
 | OpenCode | 正式接入 | JS plugin | ✅ | ✅ | — | plugin 路线稳定，先做只读增强 |
 | Droid | 正式接入 | Factory `settings.json` hooks | ✅ | ✅ | ✅ | Claude-compatible `hookSpecificOutput` |
 | Kimi CLI | 部分支持 | `config.toml` hooks | ✅ | ✅ | ⚠️ | 首版事件覆盖已接近官方 13 事件，事件字段提取已补强，并已拿到 print-mode tool-calling 样本与 wire.jsonl 补充观察面 |
-| Amp CLI | 部分支持 | global plugin + `amp-exec` + `amp-stream` | ✅ | ✅ | ⚠️ | 审批主要在 plugin 路线；stream-json 仍是 helper-first |
+| Amp CLI | 部分支持 | global plugin + `amp-exec` + `amp-stream` | ✅ | ✅ | ⚠️ | 审批主要在 plugin 路线；stream-json 仍是 helper-first，项目级 `.amp/settings.json` / `.amp/plugins/` 已补诊断 |
 | Qoder CLI | 未接入 | — | — | — | — | 官方 CLI hooks 文档仍冲突，当前不拆 source |
 | Pi Coding Agent | 部分支持 | `pi` / `pi-json` helpers | ✅ | ✅ | — | `--mode json` 解析已覆盖单工具与多工具串行样本 |
 | Crush | 部分支持 | wrapper + project log watcher | ✅ | ✅ | — | 成功/失败样本已拿到，但仍无正式 tool-level log schema |
@@ -90,7 +90,7 @@
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kimi CLI | ✅ | ✅ | ✅ | — | ✅ | hooks 仍是主入口，`kimi-print` helper 已进入 auto-repair / watcher，并补充观察 `wire.jsonl` 的状态/失败信号 |
-| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher |
+| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher，workspace settings/plugins 已补诊断 |
 | Qoder CLI | — | — | — | — | — | docs-only |
 | Pi Coding Agent | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher |
 | Crush | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher；日志仍是高层解析 |
