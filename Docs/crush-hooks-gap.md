@@ -7,8 +7,8 @@
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| `SessionSource` / `HookSource` | ❌ | 当前无 Crush 接入 |
-| README / docs | ❌ | 仓库暂无 Crush 兼容性记录 |
+| `SessionSource` / helper | ⚠️ | 已新增 `SessionSource.crush` 与 `claude-island-crush` helper |
+| README / docs | ⚠️ | 当前已开始记录为部分支持 |
 
 ## 官方可用扩展面
 
@@ -26,22 +26,30 @@
 
 ## 结论
 
-Crush **当前不支持接入**。公开资料显示它有 MCP、权限和命令扩展，但没有现成的本地 hooks 配置面可复用。
+Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装器，可观测 Crush 会话的开始与结束；但仍没有正式 hooks / MCP / 权限集成。
 
 ## 基于本地代码的实现可行性
 
-**可行性评级**: 低（hooks） / 中（CLI 包装/MCP）
+**可行性评级**: 低（hooks） / 中高（CLI 包装） / 中（MCP）
 
 **可直接复用**
 - 若改走 CLI 包装或 session watcher，可以复用统一 `HookEvent` 消费端；`HookInstaller` 不适合直接接 Crush。
 
+**本地代码复核结果**
+- 当前会同步安装 `~/.claude-island/bin/claude-island-crush`。
+- 这个 helper 会桥接：
+  - `SessionStart`
+  - 可选的 `UserPromptSubmit`（仅在传参启动时）
+  - `Stop`
+- 当前没有把 Crush 纳入 hooks setup 列表，因为它还不是正式 hook source。
+
 **可实施方案**
 1. 优先调查 Crush 是否有可读的 session/state 文件。
-2. 如果没有，再考虑命令包装器，把 MCP/permission 事件转成 Claude Island 统一协议。
+2. 如果没有，再继续沿命令包装器演进，把更多上下文事件转成 Claude Island 统一协议。
 
 **当前推荐路线**
-1. 在 `Pi` 和 `Crush` 之间，优先做 `Crush` 的最小 runtime 原型。
-2. 第一阶段只做 CLI 包装器，先产出 `SessionStart / UserPromptSubmit / Stop`。
+1. 当前已完成第一阶段 CLI 包装器原型。
+2. 下一步优先调查 session/state 文件，而不是先碰 MCP / 权限。
 3. 在确认稳定 session/state 文件之前，不碰 MCP / 权限集成。
 
 **主要阻塞**

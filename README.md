@@ -216,7 +216,7 @@ Claude Island App (NotchView)
 | Gemini | 已接入 | 已接入，仍有 Gemini 专属 gap | [docs/gemini-hooks-gap.md](docs/gemini-hooks-gap.md) |
 | Pi (`@mariozechner/pi-coding-agent`) | 未接入 | 公开面更像 extension API，不是 hooks | [docs/pi-coding-agent-hooks-gap.md](docs/pi-coding-agent-hooks-gap.md) |
 | Droid | 已接入 | Factory settings hooks 已接入 | [docs/droid-hooks-gap.md](docs/droid-hooks-gap.md) |
-| Crush (`@charmland/crush`) | 未接入 | 当前只见 MCP / command / permission 扩展面 | [docs/crush-hooks-gap.md](docs/crush-hooks-gap.md) |
+| Crush (`@charmland/crush`) | 部分支持 | 已提供最小 `claude-island-crush` wrapper，用于会话开始/结束观测 | [docs/crush-hooks-gap.md](docs/crush-hooks-gap.md) |
 
 #### VS 插件 / IDE 宿主
 
