@@ -2,6 +2,7 @@
 
 AMP_BIN=""
 BRIDGE="$HOME/.claude-island/bin/claude-island-bridge-launcher.sh"
+AMP_WRAPPER="$HOME/.claude-island/bin/claude-island-amp"
 
 if command -v uuidgen >/dev/null 2>&1; then
   SESSION_ID="amp-exec-$(uuidgen)"
@@ -32,17 +33,21 @@ notify_error() {
   send_event "{\"hook_event_name\":\"Notification\",\"session_id\":\"$SESSION_ID\",\"cwd\":$cwd_json,\"message\":$msg_json,\"notification_type\":\"error\"}"
 }
 
-for CANDIDATE in "$HOME/.local/bin/amp" "/opt/homebrew/bin/amp" "/usr/local/bin/amp" "amp"; do
-  if [ "$CANDIDATE" = "amp" ]; then
-    if command -v amp >/dev/null 2>&1; then
-      AMP_BIN="$(command -v amp)"
+if [ -x "$AMP_WRAPPER" ]; then
+  AMP_BIN="$AMP_WRAPPER"
+else
+  for CANDIDATE in "$HOME/.local/bin/amp" "/opt/homebrew/bin/amp" "/usr/local/bin/amp" "amp"; do
+    if [ "$CANDIDATE" = "amp" ]; then
+      if command -v amp >/dev/null 2>&1; then
+        AMP_BIN="$(command -v amp)"
+        break
+      fi
+    elif [ -x "$CANDIDATE" ]; then
+      AMP_BIN="$CANDIDATE"
       break
     fi
-  elif [ -x "$CANDIDATE" ]; then
-    AMP_BIN="$CANDIDATE"
-    break
-  fi
-done
+  done
+fi
 
 if [ -z "$AMP_BIN" ]; then
   notify_error "Amp CLI not found for claude-island-amp-exec"
@@ -77,7 +82,11 @@ cleanup() {
 
 trap cleanup EXIT
 
-env PLUGINS=all "$AMP_BIN" --execute "$PROMPT" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+if [ "$AMP_BIN" = "$AMP_WRAPPER" ]; then
+  "$AMP_BIN" --execute "$PROMPT" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+else
+  env PLUGINS=all "$AMP_BIN" --execute "$PROMPT" >"$STDOUT_FILE" 2>"$STDERR_FILE"
+fi
 STATUS=$?
 
 RESULT="$(cat "$STDOUT_FILE")"
