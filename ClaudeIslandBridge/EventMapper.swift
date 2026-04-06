@@ -323,7 +323,6 @@ enum EventMapper {
             "erroroccurred": "Notification",
             // Codex desktop / notify aliases
             "taskstarted": "UserPromptSubmit",
-            "usermessage": "UserPromptSubmit",
             "taskcomplete": "Stop",
             "agentturncomplete": "Stop",
             // Copilot-specific aliases

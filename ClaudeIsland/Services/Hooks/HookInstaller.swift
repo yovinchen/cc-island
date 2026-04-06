@@ -2027,7 +2027,7 @@ struct CopilotHookSource: HookSource {
         }
 
         var hooks = json["hooks"] as? [String: Any] ?? [:]
-        let command = "\(bridgePath) --source copilot"
+        let command = "\(HookInstaller.hookCommandPath()) --source copilot"
         let events: [(String, Int?)] = [
             ("sessionStart", nil),
             ("sessionEnd", nil),
@@ -2047,9 +2047,12 @@ struct CopilotHookSource: HookSource {
                 hookEntry["timeoutSec"] = timeoutSec
             }
             if var existing = hooks[event] as? [[String: Any]] {
+                existing.removeAll { isObsoleteCopilotEntry($0) }
                 let hasOur = existing.contains { ($0["command"] as? String)?.contains("claude-island") == true }
                 if !hasOur {
                     existing.append(hookEntry)
+                    hooks[event] = existing
+                } else {
                     hooks[event] = existing
                 }
             } else {
@@ -2072,7 +2075,9 @@ struct CopilotHookSource: HookSource {
 
         for (event, value) in hooks {
             if var entries = value as? [[String: Any]] {
-                entries.removeAll { ($0["command"] as? String)?.contains("claude-island") == true }
+                entries.removeAll {
+                    ($0["command"] as? String)?.contains("claude-island") == true || isObsoleteCopilotEntry($0)
+                }
                 if entries.isEmpty { hooks.removeValue(forKey: event) } else { hooks[event] = entries }
             }
         }
@@ -2095,6 +2100,15 @@ struct CopilotHookSource: HookSource {
             }
             return false
         }
+    }
+
+    private func isObsoleteCopilotEntry(_ entry: [String: Any]) -> Bool {
+        let candidates: [String?] = [
+            entry["command"] as? String,
+            entry["bash"] as? String,
+            entry["powershell"] as? String
+        ]
+        return candidates.contains { $0?.contains("vibe-island") == true }
     }
 }
 

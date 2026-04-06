@@ -34,7 +34,7 @@
 | Codex CLI | 正式接入 | `hooks.json` + `config.toml` + `notify` | ✅ | ✅ | ⚠️ | `PreToolUse/PostToolUse` 当前主要覆盖 Bash |
 | Codex Desktop | 正式接入 | `session_index.jsonl` + transcript watcher | — | ✅ | — | 非 hook source，走 transcript 解析 |
 | Gemini CLI | 正式接入 | `settings.json` hooks | ✅ | ✅ | — | 生命周期覆盖完整，未做独立审批模型 |
-| Copilot CLI | 部分支持 | `config.json` hooks | ✅ | ✅ | ⚠️ | 隐式审批和 `modifiedArgs` 原型已接入，项目级 `.github/hooks/*.json` 已做目录级诊断，且已有真实 hooks 样本 |
+| Copilot CLI | 部分支持 | `config.json` hooks | ✅ | ✅ | ⚠️ | 隐式审批和 `modifiedArgs` 原型已接入，项目级 `.github/hooks/*.json` 已做目录级诊断，且已有真实 hooks 样本与旧 VibeIsland 迁移清理 |
 | OpenCode | 正式接入 | JS plugin | ✅ | ✅ | — | plugin 路线稳定，先做只读增强 |
 | Droid | 正式接入 | Factory `settings.json` hooks | ✅ | ✅ | ✅ | Claude-compatible `hookSpecificOutput` |
 | Kimi CLI | 部分支持 | `config.toml` hooks | ✅ | ✅ | ⚠️ | 首版事件覆盖已接近官方 13 事件，事件字段提取已补强，并已拿到 print-mode tool-calling 样本 |
