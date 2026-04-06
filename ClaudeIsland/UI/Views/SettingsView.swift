@@ -138,16 +138,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var usageTab: some View {
-        sectionHeader(String(localized: "settings.usage.title"))
-
-        SettingsToggle(label: String(localized: "settings.usage.show_desc"),
-                      getter: { AppSettings.showUsageData },
-                      setter: { AppSettings.showUsageData = $0 })
-
-        Text(String(localized: "settings.usage.detail"))
-            .font(.system(size: 12))
-            .foregroundColor(.white.opacity(0.5))
-            .padding(.top, 4)
+        QuotaSettingsPane()
     }
 
     // MARK: - Diagnostics Tab

@@ -351,6 +351,7 @@ struct NotchView: View {
 
             // Usage data rings
             UsageHeaderDisplay(usageManager: UsageDataManager.shared)
+            QuotaHeaderDisplay(quotaStore: QuotaStore.shared)
 
             Spacer()
 
@@ -396,6 +397,8 @@ struct NotchView: View {
                 )
             case .menu:
                 NotchMenuView(viewModel: viewModel)
+            case .quota:
+                QuotaPanelView(viewModel: viewModel)
             case .chat(let session):
                 ChatView(
                     sessionId: session.sessionId,

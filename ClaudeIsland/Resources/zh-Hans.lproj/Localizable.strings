@@ -9,6 +9,7 @@
 "menu.accessibility.enable" = "启用";
 "menu.accessibility.on" = "已开启";
 "menu.open_settings" = "打开设置";
+"menu.open_quota" = "额度";
 "menu.export_log" = "导出诊断日志";
 "menu.auto_repair_hooks" = "自动修复 Hooks";
 "menu.hooks.enable" = "启用";
@@ -18,7 +19,7 @@
 "settings.tab.general" = "通用";
 "settings.tab.hooks" = "Hooks";
 "settings.tab.sound" = "声音";
-"settings.tab.usage" = "使用量";
+"settings.tab.usage" = "使用量与额度";
 "settings.tab.diagnostics" = "诊断";
 
 /* Settings Sections */
@@ -48,9 +49,9 @@
 "settings.sound.notification" = "通知声音";
 
 /* Usage Settings */
-"settings.usage.title" = "API 使用量显示";
-"settings.usage.show_desc" = "在刘海栏头部显示使用量";
-"settings.usage.detail" = "会话活跃时，API 使用量和上下文窗口数据以环形指示器显示。";
+"settings.usage.title" = "使用量与额度";
+"settings.usage.show_desc" = "在刘海栏头部显示会话使用量环";
+"settings.usage.detail" = "刘海栏头部继续显示会话使用量环，账号额度详情则在完整的额度面板中查看。";
 
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "诊断日志";

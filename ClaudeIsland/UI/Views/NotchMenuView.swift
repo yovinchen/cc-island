@@ -118,6 +118,19 @@ struct NotchMenuView: View {
                     .background(Color.white.opacity(0.08))
                     .padding(.vertical, 4)
 
+                MenuRow(
+                    icon: "gauge.medium",
+                    label: String(localized: "menu.open_quota")
+                ) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        viewModel.contentType = .quota
+                    }
+                }
+
+                Divider()
+                    .background(Color.white.opacity(0.08))
+                    .padding(.vertical, 4)
+
                 // System settings
                 MenuToggleRow(
                     icon: "power",

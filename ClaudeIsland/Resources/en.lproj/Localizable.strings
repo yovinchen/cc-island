@@ -9,6 +9,7 @@
 "menu.accessibility.enable" = "Enable";
 "menu.accessibility.on" = "On";
 "menu.open_settings" = "Open Settings";
+"menu.open_quota" = "Quota";
 "menu.export_log" = "Export Diagnostic Log";
 "menu.auto_repair_hooks" = "Auto-repair hooks";
 "menu.hooks.enable" = "Enable";
@@ -18,7 +19,7 @@
 "settings.tab.general" = "General";
 "settings.tab.hooks" = "Hooks";
 "settings.tab.sound" = "Sound";
-"settings.tab.usage" = "Usage";
+"settings.tab.usage" = "Usage & Quota";
 "settings.tab.diagnostics" = "Diagnostics";
 
 /* Settings Sections */
@@ -48,9 +49,9 @@
 "settings.sound.notification" = "Notification Sound";
 
 /* Usage Settings */
-"settings.usage.title" = "API Usage Display";
-"settings.usage.show_desc" = "Show usage data in notch header";
-"settings.usage.detail" = "API usage and context window data are displayed as ring indicators when a session is active.";
+"settings.usage.title" = "Usage & Quota";
+"settings.usage.show_desc" = "Show session usage rings in notch header";
+"settings.usage.detail" = "Session usage rings remain in the notch header, while provider quota details now live in the full quota pane.";
 
 /* Diagnostics Settings */
 "settings.diagnostics.title" = "Diagnostic Log";

@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager?
     private var screenObserver: ScreenObserver?
     private var updateCheckTimer: Timer?
+    private var appDidBecomeActiveObserver: NSObjectProtocol?
 
     static var shared: AppDelegate?
     let updater: SPUUpdater
@@ -87,6 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start Codex Desktop watchers
         CodexSessionWatcher.shared.start()
         CodexDesktopApprovalWatcher.shared.start()
+        QuotaStore.shared.start()
         KeyboardShortcutManager.shared.register()
         NSApplication.shared.setActivationPolicy(.accessory)
 
@@ -105,6 +107,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let updater = self?.updater, updater.canCheckForUpdates else { return }
             updater.checkForUpdates()
         }
+
+        appDidBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task { @MainActor in
+                QuotaStore.shared.refreshIfNeeded(maxAge: 60)
+            }
+        }
     }
 
     private func handleScreenChange() {
@@ -120,8 +132,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HookRepairManager.shared.stop()
         CodexSessionWatcher.shared.stop()
         CodexDesktopApprovalWatcher.shared.stop()
+        QuotaStore.shared.stop()
         KeyboardShortcutManager.shared.unregister()
         NotchActivityCoordinator.shared.cancelAllTimers()
+        if let appDidBecomeActiveObserver {
+            NotificationCenter.default.removeObserver(appDidBecomeActiveObserver)
+            self.appDidBecomeActiveObserver = nil
+        }
     }
 
     private func getOrCreateDistinctId() -> String {

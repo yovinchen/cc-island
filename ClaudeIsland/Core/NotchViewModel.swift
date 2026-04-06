@@ -26,6 +26,7 @@ enum NotchOpenReason {
 enum NotchContentType: Equatable {
     case instances
     case menu
+    case quota
     case chat(SessionState)
     case approval(SessionState)
     case hookSetup
@@ -35,6 +36,7 @@ enum NotchContentType: Equatable {
         switch self {
         case .instances: return "instances"
         case .menu: return "menu"
+        case .quota: return "quota"
         case .chat(let session): return "chat-\(session.sessionId)"
         case .approval(let session): return "approval-\(session.sessionId)"
         case .hookSetup: return "hookSetup"
@@ -82,6 +84,11 @@ class NotchViewModel: ObservableObject {
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
                 height: 580 + screenSelector.expandedPickerHeight + soundSelector.expandedPickerHeight
+            )
+        case .quota:
+            return CGSize(
+                width: min(screenRect.width * 0.45, 560),
+                height: 520
             )
         case .approval:
             return CGSize(
