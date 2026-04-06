@@ -385,6 +385,52 @@ class CodexSessionWatcher {
                 toolResponse: payload["output"] as? String
             )
 
+        case "custom_tool_call":
+            guard let toolName = payload["name"] as? String,
+                  let callId = payload["call_id"] as? String else {
+                return nil
+            }
+
+            let toolInput = decodeToolInput(payload["input"])
+
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: cwd,
+                event: "PreToolUse",
+                status: "running_tool",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: toolName,
+                toolInput: toolInput,
+                toolUseId: callId,
+                notificationType: nil,
+                message: nil
+            )
+
+        case "custom_tool_call_output":
+            guard let callId = payload["call_id"] as? String else {
+                return nil
+            }
+
+            return HookEvent(
+                sessionId: sessionId,
+                source: .codexDesktop,
+                cwd: cwd,
+                event: "PostToolUse",
+                status: "processing",
+                pid: nil,
+                tty: nil,
+                approvalChannel: .none,
+                tool: nil,
+                toolInput: nil,
+                toolUseId: callId,
+                notificationType: nil,
+                message: nil,
+                toolResponse: extractCustomToolOutput(payload["output"])
+            )
+
         default:
             return nil
         }
@@ -403,6 +449,19 @@ class CodexSessionWatcher {
             return dict.reduce(into: [String: AnyCodable]()) { partialResult, entry in
                 partialResult[entry.key] = AnyCodable(entry.value)
             }
+        }
+
+        return nil
+    }
+
+    private func extractCustomToolOutput(_ raw: Any?) -> String? {
+        if let str = raw as? String {
+            if let data = str.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let output = json["output"] as? String {
+                return output
+            }
+            return str
         }
 
         return nil
