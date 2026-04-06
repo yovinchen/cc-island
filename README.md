@@ -160,6 +160,8 @@ echo '{"type":"session_start","session_id":"test"}' | socat - UNIX-CONNECT:/tmp/
 
 更多 macOS 系统集成、helper 路径和本地发布注意事项见 [docs/macos-integration-guide.md](docs/macos-integration-guide.md)。
 
+所有 CLI 类集成的当前状态、剩余缺口和自动推进顺序见 [docs/cli-roadmap.md](docs/cli-roadmap.md)。
+
 ---
 
 ## Hook 注入系统
