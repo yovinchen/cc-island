@@ -19,11 +19,13 @@ final class KimiWireWatcher {
     private var lastSignature: String?
     private let sessionId: String
     private let cwd: String
+    private let startedAt: Date
     private let queue = DispatchQueue(label: "com.claudeisland.kimiwatcher", qos: .utility)
 
     init(sessionId: String, cwd: String) {
         self.sessionId = sessionId
         self.cwd = cwd
+        self.startedAt = Date()
     }
 
     func start() {
@@ -86,7 +88,14 @@ final class KimiWireWatcher {
             .map { $0.appendingPathComponent("wire.jsonl") }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
 
-        let sorted = candidates.sorted { lhs, rhs in
+        let recentCandidates = candidates.filter { candidate in
+            let modifiedAt = (try? candidate.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return modifiedAt >= startedAt.addingTimeInterval(-300)
+        }
+
+        let preferredCandidates = recentCandidates.isEmpty ? candidates : recentCandidates
+
+        let sorted = preferredCandidates.sorted { lhs, rhs in
             let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return lhsDate > rhsDate

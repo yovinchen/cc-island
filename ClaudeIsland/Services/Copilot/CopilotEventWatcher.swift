@@ -18,10 +18,12 @@ final class CopilotEventWatcher {
     private var lastOffset: UInt64 = 0
     private var lastSignature: String?
     private let sessionId: String
+    private let startedAt: Date
     private let queue = DispatchQueue(label: "com.claudeisland.copilotwatcher", qos: .utility)
 
     init(sessionId: String) {
         self.sessionId = sessionId
+        self.startedAt = Date()
     }
 
     func start() {
@@ -84,7 +86,14 @@ final class CopilotEventWatcher {
             .map { $0.appendingPathComponent("events.jsonl") }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
 
-        let sorted = candidates.sorted { lhs, rhs in
+        let recentCandidates = candidates.filter { candidate in
+            let modifiedAt = (try? candidate.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return modifiedAt >= startedAt.addingTimeInterval(-300)
+        }
+
+        let preferredCandidates = recentCandidates.isEmpty ? candidates : recentCandidates
+
+        let sorted = preferredCandidates.sorted { lhs, rhs in
             let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return lhsDate > rhsDate
