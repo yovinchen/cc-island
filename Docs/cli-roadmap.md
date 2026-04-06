@@ -34,7 +34,7 @@
 | Cline / Cline CLI | 部分支持 | `SessionSource.cline` + `ClineHookSource`，当前先做 hooks 监控与启用诊断 |
 | Qoder CLI | 仅文档 | `Docs/qoder-cli-hooks-gap.md`，当前明确不拆 source |
 | Pi Coding Agent | 部分支持 | `SessionSource.pi` + `pi` / `pi-json` helpers，含 best-effort json 事件恢复 |
-| Crush | 部分支持 | `SessionSource.crush` + wrapper + `CrushLogWatcher` 最小日志解析 |
+| Crush | 部分支持 | `SessionSource.crush` + wrapper + `CrushLogWatcher` best-effort 结构化日志识别 |
 
 ### A. 已接入，可持续打磨
 

@@ -43,7 +43,7 @@ Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装
   - `Stop`
 - 当前没有把 Crush 纳入 hooks setup 列表，因为它还不是正式 hook source。
 - 运行时现在也会检测项目内 `./.crush/logs/crush.log`，并把它作为后续 watcher 的首选线索提示出来。
-- 当前已新增最小 `CrushLogWatcher`，会把该日志文件追加的新行作为 `Notification` 喂回当前 Crush 会话。
+- 当前已新增最小 `CrushLogWatcher`，会优先尝试把 JSON 日志行识别成 `PreToolUse` / `PostToolUse` / `PostToolUseFailure`，识别不了时再回退成 `Notification`。
 
 **可实施方案**
 1. 优先调查 Crush 是否有可读的 session/state 文件。
