@@ -42,31 +42,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        Mixpanel.initialize(token: "49814c1436104ed108f3fc4735228496")
+        MixpanelTracker.initializeIfNeeded()
 
         let distinctId = getOrCreateDistinctId()
-        Mixpanel.mainInstance().identify(distinctId: distinctId)
+        MixpanelTracker.withInstance { mixpanel in
+            mixpanel.identify(distinctId: distinctId)
+        }
 
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
         let osVersion = Foundation.ProcessInfo.processInfo.operatingSystemVersionString
 
-        Mixpanel.mainInstance().registerSuperProperties([
-            "app_version": version,
-            "build_number": build,
-            "macos_version": osVersion
-        ])
+        MixpanelTracker.withInstance { mixpanel in
+            mixpanel.registerSuperProperties([
+                "app_version": version,
+                "build_number": build,
+                "macos_version": osVersion
+            ])
+        }
 
         fetchAndRegisterClaudeVersion()
 
-        Mixpanel.mainInstance().people.set(properties: [
-            "app_version": version,
-            "build_number": build,
-            "macos_version": osVersion
-        ])
-
-        Mixpanel.mainInstance().track(event: "App Launched")
-        Mixpanel.mainInstance().flush()
+        MixpanelTracker.withInstance { mixpanel in
+            mixpanel.people.set(properties: [
+                "app_version": version,
+                "build_number": build,
+                "macos_version": osVersion
+            ])
+            mixpanel.track(event: "App Launched")
+            mixpanel.flush()
+        }
 
         // Request notification authorization
         NotificationManager.shared.requestAuthorization()
@@ -107,7 +112,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        Mixpanel.mainInstance().flush()
+        MixpanelTracker.withInstance { mixpanel in
+            mixpanel.flush()
+        }
         updateCheckTimer?.invalidate()
         screenObserver = nil
         HookRepairManager.shared.stop()
@@ -188,8 +195,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                   let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
                   let version = json["version"] as? String else { continue }
 
-            Mixpanel.mainInstance().registerSuperProperties(["claude_code_version": version])
-            Mixpanel.mainInstance().people.set(properties: ["claude_code_version": version])
+            MixpanelTracker.withInstance { mixpanel in
+                mixpanel.registerSuperProperties(["claude_code_version": version])
+                mixpanel.people.set(properties: ["claude_code_version": version])
+            }
             return
         }
     }

@@ -123,7 +123,11 @@ actor SessionStore {
 
         // Track new session in Mixpanel
         if isNewSession {
-            Mixpanel.mainInstance().track(event: "Session Started")
+            await MainActor.run {
+                MixpanelTracker.withInstance { mixpanel in
+                    mixpanel.track(event: "Session Started")
+                }
+            }
             if let diagnostic = projectConfigDiagnosticMessage(for: event.source, cwd: event.cwd),
                session.hookMessage == nil {
                 session.hookMessage = diagnostic
