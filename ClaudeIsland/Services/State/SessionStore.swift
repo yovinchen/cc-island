@@ -330,7 +330,12 @@ actor SessionStore {
             return nil
         case .cline:
             if let customDir = env["CLINE_DIR"], !customDir.isEmpty {
-                return "Custom Cline config directory detected via CLINE_DIR; Claude Island currently manages the default Cline hook locations."
+                return "Custom Cline config directory detected via CLINE_DIR (\(customDir)); Claude Island currently manages the default Cline hook locations unless you point hooks at the same custom directory."
+            }
+            return nil
+        case .kiroCLI:
+            if env["CLAUDE_ISLAND_KIRO_WRAPPER"] != "1" {
+                return "Kiro session was not launched through the claude-island-kiro wrapper; if hooks are missing, use the wrapper or pass --agent claude-island explicitly."
             }
             return nil
         default:

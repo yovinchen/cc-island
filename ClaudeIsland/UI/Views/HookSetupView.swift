@@ -274,13 +274,13 @@ struct ToolSetupRow: View {
     private func configDescription(for source: SessionSource) -> String {
         switch source {
         case .claude: return "~/.claude/settings.json"
-        case .cline: return "~/Documents/Cline/Hooks + ~/.cline/data/globalState.json"
+        case .cline: return "~/Documents/Cline/Hooks + ~/.cline/data/globalState.json (or $CLINE_DIR/data/globalState.json)"
         case .codexCLI: return "~/.codex/hooks.json + ~/.codex/config.toml"
         case .gemini: return "~/.gemini/settings.json or .gemini/settings.json"
         case .cursor: return "~/.cursor/hooks.json or .cursor/hooks.json"
         case .windsurf: return "~/.codeium/windsurf/hooks.json (+ .windsurf/hooks.json / /Library/Application Support/Windsurf/hooks.json)"
         case .kimiCLI: return "~/.kimi/config.toml"
-        case .kiroCLI: return "~/.kiro/agents/claude-island.json"
+        case .kiroCLI: return "~/.kiro/agents/claude-island.json + ~/.claude-island/bin/claude-island-kiro"
         case .ampCLI: return "~/.config/amp/plugins/claude-island.ts"
         case .pi: return "~/.claude-island/bin/claude-island-pi + claude-island-pi-json"
         case .crush: return "~/.claude-island/bin/claude-island-crush"

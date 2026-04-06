@@ -22,7 +22,7 @@
 | Cursor | 正式接入 | `hooks.json` | ✅ | ✅ | ✅ | Cursor 专属 `{continue, permission}` 响应 |
 | Windsurf | 部分支持 | `hooks.json` | ✅ | ✅ | ⚠️ | deny 已支持 `stderr + exit 2`，workspace/system 已有诊断但仍未完整托管 |
 | CodeBuddy | 正式接入 | `settings.json` hooks | ✅ | ✅ | ✅ | 隐式审批已接通 |
-| Kiro | 部分支持 | custom agent + wrapper | ✅ | ✅ | — | 需显式使用 `claude-island` agent |
+| Kiro | 部分支持 | custom agent + wrapper | ✅ | ✅ | — | 需显式使用 `claude-island` agent；推荐走 wrapper |
 | Lingma | 未接入 | — | — | — | — | 当前只有 rules / MCP 路线 |
 
 ### CLI / Desktop
@@ -82,7 +82,7 @@
 | 对象 | 设置/UI | 自动修复 | 配置监听 | 宿主聚焦 | 解析增强 | 备注 |
 |------|:------:|:--------:|:--------:|:--------:|:--------:|------|
 | Claude Code | ✅ | ✅ | ✅ | ✅ | ✅ | 含聊天记录 / StatusLine / 权限态 |
-| Cline / Cline CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件归一化已做，返回面仍首版 |
+| Cline / Cline CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件归一化已做，返回面仍首版；自定义 `CLINE_DIR` 已有运行时诊断 |
 | Codex CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | notify + CLI hooks，细节仍在打磨 |
 | Codex Desktop | — | — | — | — | ✅ | transcript / rate-limit / reasoning 解析 |
 | Gemini CLI | ✅ | ✅ | ✅ | ✅ | ✅ | Gemini 专属生命周期已接入为通知类事件 |

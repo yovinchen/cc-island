@@ -40,4 +40,6 @@ while [ $INDEX -le $# ]; do
   INDEX=$((INDEX + 1))
 done
 
+export CLAUDE_ISLAND_KIRO_WRAPPER=1
+
 exec "$KIRO_BIN" --agent claude-island "$@"
