@@ -259,6 +259,14 @@ actor SessionStore {
                 return "Project Gemini config detected at .gemini/settings.json; it may override your user-level hooks."
             }
             return nil
+        case .crush:
+            let path = URL(fileURLWithPath: cwd)
+                .appendingPathComponent(".crush/logs/crush.log")
+                .path
+            if FileManager.default.fileExists(atPath: path) {
+                return "Crush project log detected at .crush/logs/crush.log; this is the most likely future watcher surface for richer Crush session tracking."
+            }
+            return nil
         default:
             return nil
         }

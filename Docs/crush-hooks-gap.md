@@ -42,6 +42,7 @@ Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装
   - 可选的 `UserPromptSubmit`（仅在传参启动时）
   - `Stop`
 - 当前没有把 Crush 纳入 hooks setup 列表，因为它还不是正式 hook source。
+- 运行时现在也会检测项目内 `./.crush/logs/crush.log`，并把它作为后续 watcher 的首选线索提示出来。
 
 **可实施方案**
 1. 优先调查 Crush 是否有可读的 session/state 文件。
@@ -49,7 +50,7 @@ Crush **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装
 
 **当前推荐路线**
 1. 当前已完成第一阶段 CLI 包装器原型。
-2. 下一步优先调查 session/state 文件，而不是先碰 MCP / 权限。
+2. 官方已明确项目日志位于 `./.crush/logs/crush.log`，下一步优先沿这条日志面评估 watcher，而不是先碰 MCP / 权限。
 3. 在确认稳定 session/state 文件之前，不碰 MCP / 权限集成。
 
 **主要阻塞**

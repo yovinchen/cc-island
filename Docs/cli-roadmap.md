@@ -264,7 +264,7 @@
 - `Pi` 仍只有文档，没有代码实现
 
 **建议**
-- `Crush` 继续从当前 wrapper 原型往 session/state 调查推进
+- `Crush` 继续从当前 wrapper 原型往 `./.crush/logs/crush.log` 这条日志面调查推进
 - 继续避免先碰 MCP/权限
 - `Pi` 继续保持 docs-only，除非先发现稳定的 session store 或官方扩展事件面
 
