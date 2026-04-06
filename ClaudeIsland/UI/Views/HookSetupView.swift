@@ -285,7 +285,7 @@ struct ToolSetupRow: View {
         case .pi: return "~/.claude-island/bin/claude-island-pi + claude-island-pi-json"
         case .crush: return "~/.claude-island/bin/claude-island-crush"
         case .opencode: return "~/.config/opencode/plugins/"
-        case .copilot: return "~/.copilot/config.json (+ optional .github/hooks/*.json)"
+        case .copilot: return "~/.copilot/config.json (+ optional .github/hooks/*.json, ~/.claude-island/bin/claude-island-copilot-json)"
         case .qoder: return "~/.qoder/settings.json"
         case .droid: return "~/.factory/settings.json"
         case .codebuddy: return "~/.codebuddy/settings.json"

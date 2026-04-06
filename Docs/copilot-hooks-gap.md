@@ -84,11 +84,13 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 
 **当前补充**:
 - 运行时现在会检测项目级 `.github/hooks/` 目录下的 JSON hooks 文件，并提示它们可能覆盖用户级 hooks。
+- 当前还会同步安装 `~/.claude-island/bin/claude-island-copilot-json`，作为 `copilot -p --output-format json` 的最小 helper 入口。
 
 **改进方案**: 后续再决定是否支持扫描和注入项目级 `.github/hooks/` 目录中的配置文件。
 
 **本地代码补充**:
 - 当前 `CopilotHookSource` 已开始为 `preToolUse` 写入 `timeoutSec = 120`，与当前隐式审批等待窗口对齐。
+- 当前 `CopilotHookSource.managedConfigPaths` 也已把 `claude-island-copilot-json` helper 纳入 repair / watcher 链路，helper 丢失时可通过统一 launcher 刷新恢复。
 
 ---
 

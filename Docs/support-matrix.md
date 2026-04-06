@@ -86,7 +86,7 @@
 | Codex CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | notify + CLI hooks，细节仍在打磨 |
 | Codex Desktop | — | — | — | — | ✅ | transcript / rate-limit / reasoning 解析 |
 | Gemini CLI | ✅ | ✅ | ✅ | ✅ | ✅ | Gemini 专属生命周期已接入为通知类事件 |
-| Copilot CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | payload fallback / `modifiedArgs` 原型已接入，且已开始兼容本机 JSON 输出事件形状 |
+| Copilot CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | hooks 仍是主入口，同时已有 `copilot-json` helper 作为最小 JSON-mode fallback |
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kimi CLI | ✅ | ✅ | ✅ | — | ⚠️ | hooks 仍是主入口，`kimi-print` helper 现在也进入 auto-repair / watcher |

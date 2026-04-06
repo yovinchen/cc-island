@@ -145,6 +145,7 @@ struct HookInstaller {
             ("claude-island-amp", "sh", "claude-island-amp"),
             ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
             ("claude-island-amp-stream", "sh", "claude-island-amp-stream"),
+            ("claude-island-copilot-json", "sh", "claude-island-copilot-json"),
             ("claude-island-kimi-print", "sh", "claude-island-kimi-print"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
             ("claude-island-pi-json", "sh", "claude-island-pi-json"),
@@ -2002,7 +2003,17 @@ struct CopilotHookSource: HookSource {
             .appendingPathComponent(".copilot/config.json").path
     }
 
+    var managedConfigPaths: [String] {
+        [configPath, helperRoot.appendingPathComponent("claude-island-copilot-json").path]
+    }
+
+    private var helperRoot: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude-island/bin")
+    }
+
     func install(bridgePath: String) throws {
+        HookInstaller.installLauncher()
         let configURL = URL(fileURLWithPath: configPath)
         try? FileManager.default.createDirectory(
             at: configURL.deletingLastPathComponent(),
