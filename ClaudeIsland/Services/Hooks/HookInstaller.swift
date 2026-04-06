@@ -134,6 +134,7 @@ struct HookInstaller {
         let helperScripts: [(resource: String, ext: String, dest: String)] = [
             ("claude-island-amp", "sh", "claude-island-amp"),
             ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
+            ("claude-island-amp-stream", "sh", "claude-island-amp-stream"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
             ("claude-island-crush", "sh", "claude-island-crush"),
         ]
