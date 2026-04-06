@@ -214,7 +214,7 @@ Claude Island App (NotchView)
 | Codex | 已接入 | CLI hooks + Desktop transcript watcher | [docs/codex-hooks-gap.md](docs/codex-hooks-gap.md) |
 | OpenCode | 已接入 | JS 插件桥接已实现 | [docs/opencode-hooks-gap.md](docs/opencode-hooks-gap.md) |
 | Gemini | 已接入 | 已接入，仍有 Gemini 专属 gap | [docs/gemini-hooks-gap.md](docs/gemini-hooks-gap.md) |
-| Pi (`@mariozechner/pi-coding-agent`) | 未接入 | 公开面更像 extension API，不是 hooks | [docs/pi-coding-agent-hooks-gap.md](docs/pi-coding-agent-hooks-gap.md) |
+| Pi (`@mariozechner/pi-coding-agent`) | 部分支持 | 已提供最小 `claude-island-pi` wrapper，用于会话开始/结束观测 | [docs/pi-coding-agent-hooks-gap.md](docs/pi-coding-agent-hooks-gap.md) |
 | Droid | 已接入 | Factory settings hooks 已接入 | [docs/droid-hooks-gap.md](docs/droid-hooks-gap.md) |
 | Crush (`@charmland/crush`) | 部分支持 | 已提供最小 `claude-island-crush` wrapper，用于会话开始/结束观测 | [docs/crush-hooks-gap.md](docs/crush-hooks-gap.md) |
 

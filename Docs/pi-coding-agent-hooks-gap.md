@@ -8,8 +8,8 @@
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| `SessionSource` / `HookSource` | ❌ | 当前无 Pi Coding Agent 接入 |
-| README / docs | ❌ | 暂无 Pi 相关审计记录 |
+| `SessionSource` / helper | ⚠️ | 已新增 `SessionSource.pi` 与 `claude-island-pi` helper |
+| README / docs | ⚠️ | 当前已开始记录为部分支持 |
 
 ## 官方可用扩展面
 
@@ -26,18 +26,27 @@
 
 ## 结论
 
-Pi Coding Agent **当前不支持接入**。本次只找到扩展 API / toolkit 公开资料，未找到稳定的官方 hooks 规范。
+Pi Coding Agent **当前已部分支持**。Claude Island 现在已提供最小 CLI 包装器，可观测 Pi 会话的开始与结束；但仍没有正式 hooks / tool-level / session-file 解析。
 
 ## 基于本地代码的实现可行性
 
-**可行性评级**: 低（直连） / 中（命令包装）
+**可行性评级**: 低（直连） / 中高（命令包装）
 
 **可直接复用**
 - 如果未来选择“包裹 CLI / agent runtime 输出”的方案，可复用 `EventMapper` 下游与统一 session/UI。
 
+**本地代码复核结果**
+- 当前会同步安装 `~/.claude-island/bin/claude-island-pi`。
+- 这个 helper 会桥接：
+  - `SessionStart`
+  - 可选的 `UserPromptSubmit`（仅在传参启动时）
+  - `Stop`
+- 当前运行时也会检测 `PI_CODING_AGENT_DIR`，并提示 Claude Island 现在仍是 wrapper-based 集成。
+
 **可实施方案**
-1. 优先寻找 Pi 的 session store 或命令扩展点。
-2. 若只能包裹命令，先做只读 watcher，不要先碰审批。
+1. 当前已完成第一阶段 wrapper 原型。
+2. 下一步优先评估 `--mode json` / `--mode rpc` 是否值得做只读解析。
+3. 在确认稳定 JSON 或 session 文件格式之前，不碰审批。
 
 **主要阻塞**
 - 当前没有官方 hooks 规范，所有实现都会偏旁路，维护成本高。
