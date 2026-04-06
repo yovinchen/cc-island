@@ -136,6 +136,7 @@ struct HookInstaller {
             ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
             ("claude-island-amp-stream", "sh", "claude-island-amp-stream"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
+            ("claude-island-pi", "sh", "claude-island-pi"),
             ("claude-island-crush", "sh", "claude-island-crush"),
         ]
 
@@ -270,6 +271,13 @@ struct HookInstaller {
            fm.fileExists(atPath: "/usr/local/bin/amp") ||
            fm.fileExists(atPath: "/opt/homebrew/bin/amp") {
             installed.append(.ampCLI)
+        }
+
+        // Pi Coding Agent: check ~/.pi or common executable locations
+        if fm.fileExists(atPath: "\(home)/.pi") ||
+           fm.fileExists(atPath: "/usr/local/bin/pi") ||
+           fm.fileExists(atPath: "/opt/homebrew/bin/pi") {
+            installed.append(.pi)
         }
 
         // Crush: check ~/.config/crush or common executable locations

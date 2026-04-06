@@ -291,6 +291,11 @@ actor SessionStore {
                 return "Custom Amp settings file detected via AMP_SETTINGS_FILE; the default ~/.config/amp plugin path may not be the active config."
             }
             return nil
+        case .pi:
+            if let customDir = env["PI_CODING_AGENT_DIR"], !customDir.isEmpty {
+                return "Custom Pi session directory detected via PI_CODING_AGENT_DIR; Claude Island currently treats Pi as a wrapper-based integration."
+            }
+            return nil
         case .cline:
             if let customDir = env["CLINE_DIR"], !customDir.isEmpty {
                 return "Custom Cline config directory detected via CLINE_DIR; Claude Island currently manages the default Cline hook locations."
