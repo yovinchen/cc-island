@@ -1016,34 +1016,40 @@ private struct ProviderUsageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(window.label)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.9))
+            HStack(alignment: .top, spacing: 16) {
+                Text(window.label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.9))
+                    .frame(width: 94, alignment: .leading)
 
-            ProviderUsageProgressBar(progress: window.clampedUsedRatio)
+                VStack(alignment: .leading, spacing: 8) {
+                    ProviderUsageProgressBar(progress: window.clampedUsedRatio)
 
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(Int(window.clampedUsedRatio * 100))% used")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.white.opacity(0.65))
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("\(Int(window.clampedUsedRatio * 100))% used")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.65))
 
-                Spacer()
+                        Spacer()
 
-                if let resetsAt = window.resetsAt {
-                    Text(String(format: String(localized: "quota.resets %@"), resetsAt.formatted(date: .abbreviated, time: .shortened)))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.52))
-                } else {
-                    Text(String(localized: "quota.no_reset_detected"))
-                        .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        if let resetsAt = window.resetsAt {
+                            Text(String(format: String(localized: "quota.resets %@"), resetsAt.formatted(date: .abbreviated, time: .shortened)))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.white.opacity(0.52))
+                        } else {
+                            Text(String(localized: "quota.no_reset_detected"))
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.4))
+                        }
+                    }
+
+                    if let detail = window.detail, !detail.isEmpty {
+                        Text(detail)
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.45))
+                    }
                 }
-            }
-
-            if let detail = window.detail, !detail.isEmpty {
-                Text(detail)
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.45))
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

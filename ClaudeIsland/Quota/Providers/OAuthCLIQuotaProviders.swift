@@ -1111,6 +1111,10 @@ private enum GeminiUserTierID: String {
 private struct GeminiCodeAssistStatus {
     let tier: GeminiUserTierID?
     let projectId: String?
+    let tierName: String?
+    let paidTierName: String?
+    let isGCPManaged: Bool?
+    let manageSubscriptionURL: String?
 }
 
 private struct GeminiQuotaBucket: Decodable {
@@ -1202,7 +1206,7 @@ private enum GeminiQuotaCredentialsStore {
         return accessToken
     }
 
-    private struct GeminiOAuthClient {
+    fileprivate struct GeminiOAuthClient {
         let clientId: String
         let clientSecret: String
     }
@@ -1230,14 +1234,40 @@ private enum GeminiQuotaCredentialsStore {
 
         for path in possiblePaths {
             if let content = try? String(contentsOfFile: path, encoding: .utf8),
-               let clientId = content.firstMatch(of: /OAUTH_CLIENT_ID\s*=\s*['"]([^'"]+)['"]\s*;/)?.output.1,
-               let clientSecret = content.firstMatch(of: /OAUTH_CLIENT_SECRET\s*=\s*['"]([^'"]+)['"]\s*;/)?.output.1
+               let credentials = parseOAuthClientCredentials(from: content)
             {
-                return GeminiOAuthClient(clientId: String(clientId), clientSecret: String(clientSecret))
+                return credentials
+            }
+        }
+
+        let bundleDirectory = "\(baseDir)/bundle"
+        if let entries = try? fileManager.contentsOfDirectory(atPath: bundleDirectory) {
+            let candidateFiles = entries
+                .filter { entry in
+                    entry.hasSuffix(".js") && (entry.hasPrefix("chunk-") || entry.hasPrefix("oauth2-provider-") || entry == "gemini.js")
+                }
+                .sorted()
+
+            for fileName in candidateFiles {
+                let path = "\(bundleDirectory)/\(fileName)"
+                if let content = try? String(contentsOfFile: path, encoding: .utf8),
+                   let credentials = parseOAuthClientCredentials(from: content)
+                {
+                    return credentials
+                }
             }
         }
 
         return nil
+    }
+
+    fileprivate static func parseOAuthClientCredentials(from content: String) -> GeminiOAuthClient? {
+        guard let clientId = content.firstMatch(of: /OAUTH_CLIENT_ID\s*=\s*['"]([^'"]+)['"]\s*;/)?.output.1,
+              let clientSecret = content.firstMatch(of: /OAUTH_CLIENT_SECRET\s*=\s*['"]([^'"]+)['"]\s*;/)?.output.1
+        else {
+            return nil
+        }
+        return GeminiOAuthClient(clientId: String(clientId), clientSecret: String(clientSecret))
     }
 
     private static func updateStoredCredentials(refreshResponse: [String: Any]) throws {
@@ -1264,6 +1294,7 @@ private enum GeminiQuotaCredentialsStore {
 private enum GeminiQuotaUsageFetcher {
     private static let quotaEndpoint = URL(string: "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota")!
     private static let loadCodeAssistEndpoint = URL(string: "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")!
+    private static let projectsEndpoint = URL(string: "https://cloudresourcemanager.googleapis.com/v1/projects")!
 
     static func loadCodeAssistStatus(accessToken: String) async -> GeminiCodeAssistStatus {
         var request = URLRequest(url: loadCodeAssistEndpoint)
@@ -1277,15 +1308,71 @@ private enum GeminiQuotaUsageFetcher {
               response.statusCode == 200,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
-            return GeminiCodeAssistStatus(tier: nil, projectId: nil)
+            return GeminiCodeAssistStatus(
+                tier: nil,
+                projectId: nil,
+                tierName: nil,
+                paidTierName: nil,
+                isGCPManaged: nil,
+                manageSubscriptionURL: nil
+            )
         }
 
-        let tierID = QuotaRuntimeSupport.stringValue((json["currentTier"] as? [String: Any])?["id"])
-        let projectId = QuotaRuntimeSupport.stringValue(json["cloudaicompanionProject"] ?? json["projectId"])
+        let currentTier = json["currentTier"] as? [String: Any]
+        let tierID = QuotaRuntimeSupport.stringValue(currentTier?["id"])
+        let projectId = parseProjectId(from: json)
         return GeminiCodeAssistStatus(
             tier: tierID.flatMap { GeminiUserTierID(rawValue: $0) },
-            projectId: projectId
+            projectId: projectId,
+            tierName: QuotaRuntimeSupport.stringValue(currentTier?["name"]),
+            paidTierName: QuotaRuntimeSupport.stringValue((json["paidTier"] as? [String: Any])?["name"]),
+            isGCPManaged: json["gcpManaged"] as? Bool,
+            manageSubscriptionURL: QuotaRuntimeSupport.stringValue(json["manageSubscriptionUri"])
         )
+    }
+
+    static func discoverProjectId(accessToken: String) async -> String? {
+        var request = URLRequest(url: projectsEndpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 10
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+
+        guard let (data, response) = try? await QuotaRuntimeSupport.data(for: request),
+              response.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let projects = json["projects"] as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        for project in projects {
+            guard let projectId = QuotaRuntimeSupport.stringValue(project["projectId"]) else { continue }
+            if projectId.hasPrefix("gen-lang-client") {
+                return projectId
+            }
+            if let labels = project["labels"] as? [String: String],
+               labels["generative-language"] != nil
+            {
+                return projectId
+            }
+        }
+
+        return nil
+    }
+
+    fileprivate static func parseProjectId(from json: [String: Any]) -> String? {
+        if let projectId = QuotaRuntimeSupport.stringValue(json["cloudaicompanionProject"]) {
+            return projectId
+        }
+        if let project = json["cloudaicompanionProject"] as? [String: Any] {
+            if let id = QuotaRuntimeSupport.stringValue(project["id"]) {
+                return id
+            }
+            if let projectId = QuotaRuntimeSupport.stringValue(project["projectId"]) {
+                return projectId
+            }
+        }
+        return QuotaRuntimeSupport.stringValue(json["projectId"])
     }
 
     static func fetchUsage(accessToken: String, projectId: String?) async throws -> GeminiQuotaResponse {
@@ -1312,6 +1399,21 @@ private enum GeminiQuotaUsageFetcher {
     }
 }
 
+#if DEBUG
+enum GeminiQuotaTestingSupport {
+    static func extractOAuthClientCredentials(from content: String) -> (clientId: String, clientSecret: String)? {
+        guard let credentials = GeminiQuotaCredentialsStore.parseOAuthClientCredentials(from: content) else {
+            return nil
+        }
+        return (credentials.clientId, credentials.clientSecret)
+    }
+
+    static func parseProjectId(json: [String: Any]) -> String? {
+        GeminiQuotaUsageFetcher.parseProjectId(from: json)
+    }
+}
+#endif
+
 struct GeminiQuotaProvider: QuotaProvider {
     let descriptor = QuotaProviderRegistry.descriptor(for: .gemini)
 
@@ -1334,15 +1436,37 @@ struct GeminiQuotaProvider: QuotaProvider {
             throw QuotaProviderError.missingCredentials("Gemini access token missing.")
         }
 
-        let activeToken: String
-        if let expiryDate = credentials.expiryDate, expiryDate < Date(), let refreshToken = credentials.refreshToken {
-            activeToken = try await GeminiQuotaCredentialsStore.refreshAccessToken(refreshToken: refreshToken)
+        let initialCodeAssist = await GeminiQuotaUsageFetcher.loadCodeAssistStatus(accessToken: accessToken)
+        let initialProjectId: String?
+        if let projectId = initialCodeAssist.projectId {
+            initialProjectId = projectId
         } else {
-            activeToken = accessToken
+            initialProjectId = await GeminiQuotaUsageFetcher.discoverProjectId(accessToken: accessToken)
         }
 
-        let codeAssist = await GeminiQuotaUsageFetcher.loadCodeAssistStatus(accessToken: activeToken)
-        let response = try await GeminiQuotaUsageFetcher.fetchUsage(accessToken: activeToken, projectId: codeAssist.projectId)
+        let resolved: (token: String, codeAssist: GeminiCodeAssistStatus, response: GeminiQuotaResponse)
+        do {
+            let response = try await GeminiQuotaUsageFetcher.fetchUsage(accessToken: accessToken, projectId: initialProjectId)
+            resolved = (accessToken, initialCodeAssist, response)
+        } catch QuotaProviderError.unauthorized(_) {
+            guard let refreshToken = credentials.refreshToken, !refreshToken.isEmpty else {
+                throw QuotaProviderError.unauthorized("Gemini OAuth token expired or invalid.")
+            }
+
+            let refreshedToken = try await GeminiQuotaCredentialsStore.refreshAccessToken(refreshToken: refreshToken)
+            let refreshedCodeAssist = await GeminiQuotaUsageFetcher.loadCodeAssistStatus(accessToken: refreshedToken)
+            let refreshedProjectId: String?
+            if let projectId = refreshedCodeAssist.projectId {
+                refreshedProjectId = projectId
+            } else {
+                refreshedProjectId = await GeminiQuotaUsageFetcher.discoverProjectId(accessToken: refreshedToken)
+            }
+            let refreshedResponse = try await GeminiQuotaUsageFetcher.fetchUsage(accessToken: refreshedToken, projectId: refreshedProjectId)
+            resolved = (refreshedToken, refreshedCodeAssist, refreshedResponse)
+        }
+
+        let codeAssist = resolved.codeAssist
+        let response = resolved.response
         let buckets = response.buckets ?? []
         guard !buckets.isEmpty else {
             throw QuotaProviderError.invalidResponse("Gemini quota API returned no buckets.")
@@ -1401,10 +1525,10 @@ struct GeminiQuotaProvider: QuotaProvider {
                 email: QuotaUtilities.emailFromJWT(credentials.idToken),
                 organization: nil,
                 plan: planText(tier: codeAssist.tier, hostedDomain: hostedDomain(from: credentials.idToken)),
-                detail: nil
+                detail: detailText(codeAssist: codeAssist)
             ),
             updatedAt: Date(),
-            note: flashLiteNote
+            note: noteText(codeAssist: codeAssist, flashLiteNote: flashLiteNote)
         )
     }
 
@@ -1441,6 +1565,34 @@ struct GeminiQuotaProvider: QuotaProvider {
         case (.none, _):
             return nil
         }
+    }
+
+    private func detailText(codeAssist: GeminiCodeAssistStatus) -> String? {
+        var parts: [String] = []
+        if let tierName = codeAssist.tierName, !tierName.isEmpty {
+            parts.append(tierName)
+        }
+        if let projectId = codeAssist.projectId, !projectId.isEmpty {
+            parts.append("Project \(projectId)")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " • ")
+    }
+
+    private func noteText(codeAssist: GeminiCodeAssistStatus, flashLiteNote: String?) -> String? {
+        var notes: [String] = []
+        if let flashLiteNote, !flashLiteNote.isEmpty {
+            notes.append(flashLiteNote)
+        }
+        if let paidTierName = codeAssist.paidTierName,
+           !paidTierName.isEmpty,
+           paidTierName != codeAssist.tierName
+        {
+            notes.append(paidTierName)
+        }
+        if let managed = codeAssist.isGCPManaged {
+            notes.append(managed ? "Google-managed project" : "User-managed project")
+        }
+        return notes.isEmpty ? nil : notes.joined(separator: " • ")
     }
 }
 
