@@ -73,11 +73,12 @@ PROMPT_JSON="$(escape_json "$PROMPT")"
 CWD_JSON="$(escape_json "$PWD")"
 LAST_FILE="$(mktemp -t claude-island-amp-stream.last.XXXXXX)"
 ERROR_FILE="$(mktemp -t claude-island-amp-stream.error.XXXXXX)"
+COUNT_FILE="$(mktemp -t claude-island-amp-stream.count.XXXXXX)"
 STDERR_FILE="$(mktemp -t claude-island-amp-stream.stderr.XXXXXX)"
 STREAM_FILE="$(mktemp -t claude-island-amp-stream.jsonl.XXXXXX)"
 
 cleanup() {
-  rm -f "$LAST_FILE" "$ERROR_FILE" "$STDERR_FILE" "$STREAM_FILE"
+  rm -f "$LAST_FILE" "$ERROR_FILE" "$COUNT_FILE" "$STDERR_FILE" "$STREAM_FILE"
 }
 
 trap cleanup EXIT
@@ -88,10 +89,11 @@ send_event "{\"hook_event_name\":\"UserPromptSubmit\",\"session_id\":\"$SESSION_
 PARSER='import json, pathlib, re, subprocess, sys
 last_path = pathlib.Path(sys.argv[1])
 error_path = pathlib.Path(sys.argv[2])
-stream_path = pathlib.Path(sys.argv[3])
-bridge = sys.argv[4]
-session_id = sys.argv[5]
-cwd = sys.argv[6]
+count_path = pathlib.Path(sys.argv[3])
+stream_path = pathlib.Path(sys.argv[4])
+bridge = sys.argv[5]
+session_id = sys.argv[6]
+cwd = sys.argv[7]
 last_text = ""
 result_error = ""
 tool_calls = {}
@@ -204,12 +206,13 @@ if json_line_count == 0 and not result_error:
         result_error = "Amp stream-json produced no parseable JSON output"
 
 last_path.write_text(last_text)
-error_path.write_text(result_error)'
+error_path.write_text(result_error)
+count_path.write_text(str(json_line_count))'
 
 if [ "$AMP_BIN" = "$AMP_WRAPPER" ]; then
-  "$AMP_BIN" --execute "$PROMPT" --stream-json 2>"$STDERR_FILE" | tee "$STREAM_FILE"
+  env TERM=dumb NO_COLOR=1 CLICOLOR=0 "$AMP_BIN" --no-color --execute "$PROMPT" --stream-json >"$STREAM_FILE" 2>"$STDERR_FILE"
 else
-  env PLUGINS=all "$AMP_BIN" --execute "$PROMPT" --stream-json 2>"$STDERR_FILE" | tee "$STREAM_FILE"
+  env TERM=dumb NO_COLOR=1 CLICOLOR=0 PLUGINS=all "$AMP_BIN" --no-color --execute "$PROMPT" --stream-json >"$STREAM_FILE" 2>"$STDERR_FILE"
 fi
 STATUS=$?
 
@@ -217,7 +220,7 @@ BRIDGE_PATH=""
 if [ -x "$BRIDGE" ]; then
   BRIDGE_PATH="$BRIDGE"
 fi
-python3 -c "$PARSER" "$LAST_FILE" "$ERROR_FILE" "$STREAM_FILE" "$BRIDGE_PATH" "$SESSION_ID" "$PWD"
+python3 -c "$PARSER" "$LAST_FILE" "$ERROR_FILE" "$COUNT_FILE" "$STREAM_FILE" "$BRIDGE_PATH" "$SESSION_ID" "$PWD"
 
 LAST_ASSISTANT_MESSAGE=""
 if [ -f "$LAST_FILE" ]; then
@@ -228,6 +231,22 @@ RESULT_ERROR=""
 if [ -f "$ERROR_FILE" ]; then
   RESULT_ERROR="$(cat "$ERROR_FILE")"
 fi
+
+JSON_LINE_COUNT=0
+if [ -f "$COUNT_FILE" ]; then
+  JSON_LINE_COUNT="$(cat "$COUNT_FILE")"
+fi
+
+SANITIZED_STDERR="$(python3 - <<'PY' "$STDERR_FILE"
+from pathlib import Path
+import re
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(errors="ignore") if path.exists() else ""
+text = re.sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]", "", text).strip()
+print(text, end="")
+PY
+)"
 
 if [ $STATUS -eq 0 ] && [ -z "$RESULT_ERROR" ]; then
   if [ -n "$LAST_ASSISTANT_MESSAGE" ]; then
@@ -249,8 +268,14 @@ else
   send_event "{\"hook_event_name\":\"Stop\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"message\":\"Amp stream-json failed\"}"
 fi
 
-if [ -s "$STDERR_FILE" ]; then
-  cat "$STDERR_FILE" >&2
+if [ "${JSON_LINE_COUNT:-0}" -gt 0 ] && [ -s "$STREAM_FILE" ]; then
+  cat "$STREAM_FILE"
+fi
+
+if [ -n "$SANITIZED_STDERR" ]; then
+  print -r -- "$SANITIZED_STDERR" >&2
+elif [ -n "$RESULT_ERROR" ]; then
+  print -r -- "$RESULT_ERROR" >&2
 fi
 
 exit $STATUS
