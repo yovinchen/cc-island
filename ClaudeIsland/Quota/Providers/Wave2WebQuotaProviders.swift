@@ -4,6 +4,9 @@
 //
 
 import Foundation
+#if canImport(SweetCookieKit)
+import SweetCookieKit
+#endif
 
 private func normalizedCookieHeader(_ raw: String?) -> String? {
     guard var value = QuotaRuntimeSupport.cleaned(raw), !value.isEmpty else {
@@ -13,12 +16,171 @@ private func normalizedCookieHeader(_ raw: String?) -> String? {
     return value.isEmpty ? nil : value
 }
 
+private func mergedQuotaNote(_ notes: String?...) -> String? {
+    let parts: [String] = notes.compactMap { note -> String? in
+        guard let cleaned = QuotaUtilities.cleaned(note) else { return nil }
+        return cleaned
+    }
+    guard !parts.isEmpty else { return nil }
+    return parts.joined(separator: " • ")
+}
+
+private struct CursorCookieCacheEntry: Codable, Sendable {
+    let cookieHeader: String
+    let sourceLabel: String
+    let storedAt: Date
+}
+
+private enum CursorCookieCache {
+    private static let directoryName = "CursorQuota"
+    private static let fileName = "cookie-cache.json"
+
+    static func load() -> CursorCookieCacheEntry? {
+        guard let data = try? Data(contentsOf: fileURL()) else {
+            return nil
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(CursorCookieCacheEntry.self, from: data)
+    }
+
+    static func store(cookieHeader: String, sourceLabel: String, now: Date = Date()) {
+        guard let normalized = normalizedCookieHeader(cookieHeader) else {
+            clear()
+            return
+        }
+
+        let entry = CursorCookieCacheEntry(
+            cookieHeader: normalized,
+            sourceLabel: sourceLabel,
+            storedAt: now
+        )
+
+        do {
+            let url = fileURL()
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(entry)
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            // Ignore cache persistence failures; the provider can still continue with fresh data.
+        }
+    }
+
+    static func clear() {
+        try? FileManager.default.removeItem(at: fileURL())
+    }
+
+    private static func fileURL() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base
+            .appendingPathComponent("ClaudeIsland", isDirectory: true)
+            .appendingPathComponent(directoryName, isDirectory: true)
+            .appendingPathComponent(fileName)
+    }
+}
+
+#if os(macOS) && canImport(SweetCookieKit)
+private enum CursorBrowserCookieImporter {
+    struct SessionInfo: Sendable {
+        let cookieHeader: String
+        let sourceLabel: String
+    }
+
+    private static let cookieClient = BrowserCookieClient()
+    private static let sessionCookieNames: Set<String> = [
+        "WorkosCursorSessionToken",
+        "__Secure-next-auth.session-token",
+        "next-auth.session-token",
+        "wos-session",
+        "__Secure-wos-session",
+        "authjs.session-token",
+        "__Secure-authjs.session-token",
+    ]
+    private static let cookieDomains = [
+        "cursor.com",
+        "www.cursor.com",
+        "cursor.sh",
+        "authenticator.cursor.sh",
+    ]
+
+    private static var browserOrder: [Browser] {
+        let defaults = Browser.defaultImportOrder
+        if defaults.contains(.safari) {
+            return [.safari] + defaults.filter { $0 != .safari }
+        }
+        return defaults
+    }
+
+    static func hasSession() -> Bool {
+        !candidateSessions().isEmpty
+    }
+
+    static func candidateSessions() -> [SessionInfo] {
+        let strict = browserOrder.flatMap { importSessions(from: $0, requireKnownSessionName: true) }
+        if !strict.isEmpty {
+            return deduplicated(strict)
+        }
+        let fallback = browserOrder.flatMap { importSessions(from: $0, requireKnownSessionName: false) }
+        return deduplicated(fallback)
+    }
+
+    private static func deduplicated(_ sessions: [SessionInfo]) -> [SessionInfo] {
+        var seen: Set<String> = []
+        return sessions.filter { session in
+            seen.insert(session.cookieHeader).inserted
+        }
+    }
+
+    private static func importSessions(from browser: Browser, requireKnownSessionName: Bool) -> [SessionInfo] {
+        do {
+            let query = BrowserCookieQuery(domains: cookieDomains)
+            let sources = try cookieClient.records(matching: query, in: browser, logger: nil)
+            var sessions: [SessionInfo] = []
+
+            for source in sources where !source.records.isEmpty {
+                let cookies = BrowserCookieClient.makeHTTPCookies(source.records, origin: query.origin)
+                guard !cookies.isEmpty else { continue }
+
+                let hasNamedSession = cookies.contains(where: { sessionCookieNames.contains($0.name) })
+                if hasNamedSession {
+                    if requireKnownSessionName {
+                        sessions.append(SessionInfo(
+                            cookieHeader: cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; "),
+                            sourceLabel: source.label
+                        ))
+                    }
+                    continue
+                }
+
+                if !requireKnownSessionName {
+                    sessions.append(SessionInfo(
+                        cookieHeader: cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; "),
+                        sourceLabel: "\(source.label) (domain cookies)"
+                    ))
+                }
+            }
+
+            return sessions
+        } catch {
+            return []
+        }
+    }
+}
+#endif
+
 // MARK: - Cursor
 
 struct CursorUsageSummary: Codable, Sendable {
     let billingCycleStart: String?
     let billingCycleEnd: String?
     let membershipType: String?
+    let limitType: String?
+    let isUnlimited: Bool?
+    let autoModelSelectedDisplayMessage: String?
+    let namedModelSelectedDisplayMessage: String?
     let individualUsage: CursorIndividualUsage?
     let teamUsage: CursorTeamUsage?
 }
@@ -29,20 +191,49 @@ struct CursorIndividualUsage: Codable, Sendable {
 }
 
 struct CursorPlanUsage: Codable, Sendable {
+    let enabled: Bool?
     let used: Int?
     let limit: Int?
+    let remaining: Int?
+    let breakdown: CursorPlanBreakdown?
     let autoPercentUsed: Double?
     let apiPercentUsed: Double?
     let totalPercentUsed: Double?
 }
 
+struct CursorPlanBreakdown: Codable, Sendable {
+    let included: Int?
+    let bonus: Int?
+    let total: Int?
+}
+
 struct CursorOnDemandUsage: Codable, Sendable {
+    let enabled: Bool?
     let used: Int?
     let limit: Int?
+    let remaining: Int?
 }
 
 struct CursorTeamUsage: Codable, Sendable {
     let onDemand: CursorOnDemandUsage?
+}
+
+struct CursorUsageResponse: Codable, Sendable {
+    let gpt4: CursorModelUsage?
+    let startOfMonth: String?
+
+    enum CodingKeys: String, CodingKey {
+        case gpt4 = "gpt-4"
+        case startOfMonth
+    }
+}
+
+struct CursorModelUsage: Codable, Sendable {
+    let numRequests: Int?
+    let numRequestsTotal: Int?
+    let numTokens: Int?
+    let maxRequestUsage: Int?
+    let maxTokenUsage: Int?
 }
 
 struct CursorUserInfo: Codable, Sendable {
@@ -55,27 +246,90 @@ struct CursorQuotaProvider: QuotaProvider {
     let descriptor = QuotaProviderRegistry.descriptor(for: .cursor)
 
     func isConfigured() -> Bool {
-        cookieHeader() != nil
+        if cookieHeader() != nil {
+            return true
+        }
+        if CursorCookieCache.load() != nil {
+            return true
+        }
+#if os(macOS) && canImport(SweetCookieKit)
+        return CursorBrowserCookieImporter.hasSession()
+#else
+        return false
+#endif
     }
 
     func fetch() async throws -> QuotaSnapshot {
-        guard let cookieHeader = cookieHeader() else {
-            throw QuotaProviderError.missingCredentials("Cursor cookie header not configured.")
+        if let cookieHeader = cookieHeader() {
+            return try await fetchSnapshot(cookieHeader: cookieHeader, sourceNote: nil)
         }
 
-        async let summaryTask = fetchUsageSummary(cookieHeader: cookieHeader)
-        async let userTask = fetchUserInfo(cookieHeader: cookieHeader)
+        if let cached = CursorCookieCache.load() {
+            do {
+                return try await fetchSnapshot(
+                    cookieHeader: cached.cookieHeader,
+                    sourceNote: "Browser cache: \(cached.sourceLabel)"
+                )
+            } catch let error as QuotaProviderError {
+                if case .unauthorized = error {
+                    CursorCookieCache.clear()
+                } else {
+                    throw error
+                }
+            }
+        }
 
-        let summary = try await summaryTask
-        let userInfo = try? await userTask
+#if os(macOS) && canImport(SweetCookieKit)
+        for session in CursorBrowserCookieImporter.candidateSessions() {
+            do {
+                let snapshot = try await fetchSnapshot(
+                    cookieHeader: session.cookieHeader,
+                    sourceNote: "Auto-imported from \(session.sourceLabel)"
+                )
+                CursorCookieCache.store(cookieHeader: session.cookieHeader, sourceLabel: session.sourceLabel)
+                return snapshot
+            } catch let error as QuotaProviderError {
+                if case .unauthorized = error {
+                    continue
+                }
+                throw error
+            }
+        }
+#endif
 
+        throw QuotaProviderError.missingCredentials(
+            "Cursor session not found. Sign in on cursor.com, use Import Session, or paste a Cookie header."
+        )
+    }
+
+    func _test_snapshot(
+        summary: CursorUsageSummary,
+        userInfo: CursorUserInfo? = nil,
+        requestUsage: CursorUsageResponse? = nil,
+        updatedAt: Date = Date()
+    ) -> QuotaSnapshot {
+        makeSnapshot(summary: summary, userInfo: userInfo, requestUsage: requestUsage, updatedAt: updatedAt)
+    }
+
+    private func makeSnapshot(
+        summary: CursorUsageSummary,
+        userInfo: CursorUserInfo?,
+        requestUsage: CursorUsageResponse?,
+        updatedAt: Date = Date(),
+        sourceNote: String? = nil
+    ) -> QuotaSnapshot {
         let billingCycleEnd = summary.billingCycleEnd.flatMap { QuotaUtilities.isoDate($0) }
-        let autoPercent = normalizedPercent(summary.individualUsage?.plan?.autoPercentUsed)
-        let apiPercent = normalizedPercent(summary.individualUsage?.plan?.apiPercentUsed)
+        let autoPercent = cursorPercentRatio(summary.individualUsage?.plan?.autoPercentUsed)
+        let apiPercent = cursorPercentRatio(summary.individualUsage?.plan?.apiPercentUsed)
+        let hasPlanUsageSignal = summary.individualUsage?.plan?.totalPercentUsed != nil
+            || summary.individualUsage?.plan?.autoPercentUsed != nil
+            || summary.individualUsage?.plan?.apiPercentUsed != nil
+            || (summary.individualUsage?.plan?.limit ?? 0) > 0
+            || (summary.individualUsage?.plan?.used ?? 0) > 0
 
-        let planPercentUsed: Double = {
+        let planPercentUsed: Double? = {
             if let totalPercentUsed = summary.individualUsage?.plan?.totalPercentUsed {
-                return normalizedPercent(totalPercentUsed) ?? 0
+                return cursorPercentRatio(totalPercentUsed)
             }
             if let autoPercent, let apiPercent {
                 return max(0, min(1, (autoPercent + apiPercent) / 2))
@@ -88,27 +342,43 @@ struct CursorQuotaProvider: QuotaProvider {
             }
             let rawUsed = Double(summary.individualUsage?.plan?.used ?? 0)
             let rawLimit = Double(summary.individualUsage?.plan?.limit ?? 0)
-            return rawLimit > 0 ? min(max(rawUsed / rawLimit, 0), 1) : 0
+            guard rawLimit > 0 else {
+                return nil
+            }
+            return min(max(rawUsed / rawLimit, 0), 1)
+        }()
+
+        let requestsUsed = requestUsage?.gpt4?.numRequestsTotal ?? requestUsage?.gpt4?.numRequests
+        let requestsLimit = requestUsage?.gpt4?.maxRequestUsage
+        let requestRatio = quotaRatio(
+            used: requestsUsed.map(Double.init),
+            total: requestsLimit.map(Double.init)
+        )
+        let primaryDetail: String? = {
+            if let requestsUsed, let requestsLimit, requestsLimit > 0 {
+                return "\(requestsUsed) / \(requestsLimit) requests"
+            }
+            return billingCycleEnd.map { "Billing cycle ends \($0.formatted(date: .abbreviated, time: .omitted))" }
         }()
 
         let primaryWindow = quotaWindow(
             label: descriptor.primaryLabel,
-            usedRatio: planPercentUsed,
-            detail: billingCycleEnd.map { "Billing cycle ends \($0.formatted(date: .abbreviated, time: .omitted))" },
+            usedRatio: requestRatio ?? (hasPlanUsageSignal ? planPercentUsed : nil),
+            detail: primaryDetail,
             resetsAt: billingCycleEnd
         )
 
         let secondaryWindow = quotaWindow(
             label: descriptor.secondaryLabel ?? "Auto",
             usedRatio: autoPercent,
-            detail: apiPercent.map { "API \(Int($0 * 100))%" },
+            detail: apiPercent.map { "API \(Int(($0 * 100).rounded()))%" },
             resetsAt: billingCycleEnd
         )
 
         let tertiaryWindow = quotaWindow(
             label: "API",
             usedRatio: apiPercent,
-            detail: autoPercent.map { "Auto \(Int($0 * 100))%" },
+            detail: autoPercent.map { "Auto \(Int(($0 * 100).rounded()))%" },
             resetsAt: billingCycleEnd
         )
 
@@ -140,8 +410,29 @@ struct CursorQuotaProvider: QuotaProvider {
                 plan: summary.membershipType.map { formatMembershipType($0) },
                 detail: userInfo?.name
             ),
-            updatedAt: Date(),
-            note: onDemandNote
+            updatedAt: updatedAt,
+            note: mergedQuotaNote(onDemandNote, sourceNote)
+        )
+    }
+
+    private func fetchSnapshot(cookieHeader: String, sourceNote: String?) async throws -> QuotaSnapshot {
+        async let summaryTask = fetchUsageSummary(cookieHeader: cookieHeader)
+        async let userTask = fetchUserInfo(cookieHeader: cookieHeader)
+
+        let summary = try await summaryTask
+        let userInfo = try? await userTask
+        let requestUsage: CursorUsageResponse?
+        if let userID = userInfo?.sub, !userID.isEmpty {
+            requestUsage = try? await fetchRequestUsage(userID: userID, cookieHeader: cookieHeader)
+        } else {
+            requestUsage = nil
+        }
+
+        return makeSnapshot(
+            summary: summary,
+            userInfo: userInfo,
+            requestUsage: requestUsage,
+            sourceNote: sourceNote
         )
     }
 
@@ -181,11 +472,26 @@ struct CursorQuotaProvider: QuotaProvider {
         return try JSONDecoder().decode(CursorUserInfo.self, from: data)
     }
 
-    private func normalizedPercent(_ raw: Double?) -> Double? {
+    private func fetchRequestUsage(userID: String, cookieHeader: String) async throws -> CursorUsageResponse {
+        var components = URLComponents(string: "https://cursor.com/api/usage")!
+        components.queryItems = [URLQueryItem(name: "user", value: userID)]
+
+        var request = URLRequest(url: components.url!)
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+
+        let (data, response) = try await QuotaRuntimeSupport.data(for: request)
+        guard response.statusCode == 200 else {
+            throw QuotaProviderError.invalidResponse("Cursor usage returned HTTP \(response.statusCode)")
+        }
+        return try JSONDecoder().decode(CursorUsageResponse.self, from: data)
+    }
+
+    private func cursorPercentRatio(_ raw: Double?) -> Double? {
         guard let raw else { return nil }
         if raw > 100 { return 1 }
-        if raw > 1 { return min(max(raw / 100.0, 0), 1) }
-        return min(max(raw, 0), 1)
+        return min(max(raw / 100.0, 0), 1)
     }
 
     private func formatMembershipType(_ type: String) -> String {

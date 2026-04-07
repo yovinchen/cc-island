@@ -85,6 +85,13 @@
 "quota.import_session_failed %@" = "会话导入失败：%@";
 "quota.import_session_unsupported" = "这个 provider 暂不支持内置会话导入。";
 "quota.setup" = "配置说明";
+"quota.copilot_sign_in" = "GitHub 登录";
+"quota.copilot_sign_in_hint" = "通过 GitHub device flow 自动获取 Copilot token，而不是手动粘贴。";
+"quota.copilot_sign_in_action" = "使用 GitHub 登录";
+"quota.copilot_sign_in_reauth" = "重新授权";
+"quota.copilot_sign_in_waiting %@ %@" = "GitHub 验证码 %@ 已复制到剪贴板，并已打开 %@。正在等待授权完成…";
+"quota.copilot_sign_in_success" = "GitHub 授权完成，正在刷新 Copilot 额度…";
+"quota.copilot_sign_in_failed %@" = "GitHub 登录失败：%@";
 "quota.configuration" = "配置";
 "quota.source_mode" = "刷新来源";
 "quota.cli_binary" = "CLI 路径";

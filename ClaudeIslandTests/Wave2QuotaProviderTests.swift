@@ -33,6 +33,78 @@ final class Wave2QuotaProviderTests: XCTestCase {
         XCTAssertEqual(summary.individualUsage?.onDemand?.limit, 500)
     }
 
+    func testCursorSnapshotTreatsFractionalPercentFieldsAsPercentageUnits() {
+        let provider = CursorQuotaProvider()
+        let snapshot = provider._test_snapshot(
+            summary: CursorUsageSummary(
+                billingCycleStart: "2026-03-18T20:45:42.000Z",
+                billingCycleEnd: "2026-04-18T20:45:42.000Z",
+                membershipType: "pro",
+                limitType: "user",
+                isUnlimited: false,
+                autoModelSelectedDisplayMessage: nil,
+                namedModelSelectedDisplayMessage: nil,
+                individualUsage: CursorIndividualUsage(
+                    plan: CursorPlanUsage(
+                        enabled: true,
+                        used: 86,
+                        limit: 2000,
+                        remaining: 1914,
+                        breakdown: CursorPlanBreakdown(
+                            included: 86,
+                            bonus: 0,
+                            total: 86
+                        ),
+                        autoPercentUsed: 0.36,
+                        apiPercentUsed: 0.7111111111111111,
+                        totalPercentUsed: 0.441025641025641
+                    ),
+                    onDemand: CursorOnDemandUsage(
+                        enabled: false,
+                        used: 0,
+                        limit: nil,
+                        remaining: nil
+                    )
+                ),
+                teamUsage: CursorTeamUsage(onDemand: nil)
+            )
+        )
+
+        XCTAssertEqual(snapshot.primaryWindow?.usedRatio ?? 0, 0.00441025641025641, accuracy: 0.0000001)
+        XCTAssertEqual(snapshot.secondaryWindow?.usedRatio ?? 0, 0.0036, accuracy: 0.0000001)
+        XCTAssertEqual(snapshot.tertiaryWindow?.usedRatio ?? 0, 0.007111111111111111, accuracy: 0.0000001)
+    }
+
+    func testCursorSnapshotPrefersLegacyRequestUsageWhenAvailable() {
+        let provider = CursorQuotaProvider()
+        let snapshot = provider._test_snapshot(
+            summary: CursorUsageSummary(
+                billingCycleStart: nil,
+                billingCycleEnd: nil,
+                membershipType: "enterprise",
+                limitType: nil,
+                isUnlimited: nil,
+                autoModelSelectedDisplayMessage: nil,
+                namedModelSelectedDisplayMessage: nil,
+                individualUsage: nil,
+                teamUsage: nil
+            ),
+            requestUsage: CursorUsageResponse(
+                gpt4: CursorModelUsage(
+                    numRequests: 120,
+                    numRequestsTotal: 240,
+                    numTokens: nil,
+                    maxRequestUsage: 500,
+                    maxTokenUsage: nil
+                ),
+                startOfMonth: nil
+            )
+        )
+
+        XCTAssertEqual(snapshot.primaryWindow?.usedRatio ?? 0, 0.48, accuracy: 0.0001)
+        XCTAssertEqual(snapshot.primaryWindow?.detail, "240 / 500 requests")
+    }
+
     func testOpenCodeWorkspaceNormalizationFindsWorkspaceID() {
         let provider = OpenCodeQuotaProvider()
 
@@ -71,6 +143,84 @@ final class Wave2QuotaProviderTests: XCTestCase {
         XCTAssertEqual(response.copilotPlan, "individual")
         XCTAssertEqual(response.quotaSnapshots.premiumInteractions?.percentRemaining ?? 0, 40, accuracy: 0.001)
         XCTAssertEqual(response.quotaSnapshots.chat?.remaining ?? 0, 950, accuracy: 0.001)
+    }
+
+    func testCopilotUsageResponseDecodesMonthlyFallbackPayload() throws {
+        let data = Data(
+            """
+            {
+              "copilot_plan": "free",
+              "monthly_quotas": {
+                "chat": "500",
+                "completions": 300
+              },
+              "limited_user_quotas": {
+                "chat": 125,
+                "completions": "75"
+              }
+            }
+            """.utf8
+        )
+
+        let response = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
+
+        XCTAssertEqual(response.quotaSnapshots.premiumInteractions?.quotaId, "completions")
+        XCTAssertEqual(response.quotaSnapshots.premiumInteractions?.percentRemaining ?? 0, 25, accuracy: 0.001)
+        XCTAssertEqual(response.quotaSnapshots.chat?.quotaId, "chat")
+        XCTAssertEqual(response.quotaSnapshots.chat?.remaining ?? 0, 125, accuracy: 0.001)
+    }
+
+    func testCopilotUsageResponseFallsBackToUnknownQuotaKey() throws {
+        let data = Data(
+            """
+            {
+              "copilot_plan": "free",
+              "quota_snapshots": {
+                "mystery_bucket": {
+                  "entitlement": 100,
+                  "remaining": 40,
+                  "percent_remaining": 40,
+                  "quota_id": "mystery_bucket"
+                }
+              }
+            }
+            """.utf8
+        )
+
+        let response = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
+
+        XCTAssertNil(response.quotaSnapshots.premiumInteractions)
+        XCTAssertEqual(response.quotaSnapshots.chat?.quotaId, "mystery_bucket")
+        XCTAssertEqual(response.quotaSnapshots.chat?.percentRemaining ?? 0, 40, accuracy: 0.001)
+    }
+
+    func testCopilotUsageResponseUsesMonthlyFallbackWhenDirectSnapshotCannotComputePercent() throws {
+        let data = Data(
+            """
+            {
+              "copilot_plan": "free",
+              "quota_snapshots": {
+                "chat": {
+                  "entitlement": 120,
+                  "quota_id": "chat"
+                }
+              },
+              "monthly_quotas": {
+                "chat": 400
+              },
+              "limited_user_quotas": {
+                "chat": 100
+              }
+            }
+            """.utf8
+        )
+
+        let response = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
+
+        XCTAssertEqual(response.quotaSnapshots.chat?.quotaId, "chat")
+        XCTAssertEqual(response.quotaSnapshots.chat?.entitlement ?? 0, 400, accuracy: 0.001)
+        XCTAssertEqual(response.quotaSnapshots.chat?.remaining ?? 0, 100, accuracy: 0.001)
+        XCTAssertEqual(response.quotaSnapshots.chat?.percentRemaining ?? 0, 25, accuracy: 0.001)
     }
 
     func testKimiUsageResponseDecodesWeeklyAndRateLimit() throws {
@@ -129,5 +279,46 @@ final class Wave2QuotaProviderTests: XCTestCase {
         XCTAssertEqual(refillInfo?.type, "Known")
         XCTAssertNotNil(refillInfo?.next)
         XCTAssertEqual(refillInfo?.amount ?? 0, 1_000_000, accuracy: 0.001)
+    }
+
+    func testKiroSnapshotParsesManagedPlanWithoutMetrics() throws {
+        let provider = KiroQuotaProvider()
+        let snapshot = try provider._test_snapshot(
+            output: """
+            Plan: Q Developer Pro
+            Your plan is managed by admin
+            """,
+            now: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertEqual(snapshot.identity?.plan, "Q Developer Pro")
+        XCTAssertNil(snapshot.primaryWindow)
+        XCTAssertNil(snapshot.credits)
+    }
+
+    func testKiroSnapshotUsesParsedPercentWhenCoveredLineIsMissing() throws {
+        let provider = KiroQuotaProvider()
+        let snapshot = try provider._test_snapshot(
+            output: """
+            | KIRO FREE                                          |
+            ████████████████████████████████████████████████████ 40%
+            """,
+            now: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertEqual(snapshot.primaryWindow?.usedRatio ?? 0, 0.4, accuracy: 0.0001)
+        XCTAssertNil(snapshot.credits)
+    }
+
+    func testKiroSnapshotRejectsManagedMarkerWithoutPlanHeader() {
+        let provider = KiroQuotaProvider()
+
+        XCTAssertThrowsError(
+            try provider._test_snapshot(
+                output: """
+                Your plan is managed by admin
+                """
+            )
+        )
     }
 }

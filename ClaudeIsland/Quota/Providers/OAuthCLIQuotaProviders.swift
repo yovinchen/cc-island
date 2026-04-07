@@ -1616,58 +1616,14 @@ struct KiroQuotaProvider: QuotaProvider {
         try await ensureLoggedIn()
         let output = try await runUsageCommand()
         let snapshot = try parseUsage(output: output)
-
-        let primaryWindow = quotaWindow(
-            label: descriptor.primaryLabel,
-            usedRatio: snapshot.creditsTotal > 0 ? snapshot.creditsUsed / snapshot.creditsTotal : nil,
-            detail: String(format: "%.0f / %.0f covered in plan", snapshot.creditsUsed, snapshot.creditsTotal),
-            resetsAt: snapshot.resetsAt
-        )
-        let bonusDetail: String? = {
-            guard let bonusUsed = snapshot.bonusCreditsUsed,
-                  let bonusTotal = snapshot.bonusCreditsTotal
-            else { return nil }
-            if let expiryDays = snapshot.bonusExpiryDays {
-                return String(format: "%.0f / %.0f used • expires in %dd", bonusUsed, bonusTotal, expiryDays)
-            }
-            return String(format: "%.0f / %.0f used", bonusUsed, bonusTotal)
-        }()
-        let secondaryWindow = quotaWindow(
-            label: descriptor.secondaryLabel ?? "Bonus",
-            usedRatio: quotaRatio(used: snapshot.bonusCreditsUsed, total: snapshot.bonusCreditsTotal),
-            detail: bonusDetail,
-            resetsAt: snapshot.bonusExpiryDays.flatMap { Calendar.current.date(byAdding: .day, value: $0, to: Date()) }
-        )
-
-        return QuotaSnapshot(
-            providerID: .kiro,
-            source: .cli,
-            primaryWindow: primaryWindow,
-            secondaryWindow: secondaryWindow,
-            tertiaryWindow: nil,
-            credits: QuotaCredits(
-                label: "Credits",
-                used: snapshot.creditsUsed,
-                total: snapshot.creditsTotal,
-                remaining: max(0, snapshot.creditsTotal - snapshot.creditsUsed),
-                currencyCode: nil,
-                isUnlimited: false
-            ),
-            identity: QuotaIdentity(
-                email: nil,
-                organization: snapshot.planName,
-                plan: snapshot.planName,
-                detail: nil
-            ),
-            updatedAt: snapshot.updatedAt,
-            note: nil
-        )
+        return makeSnapshot(from: snapshot)
     }
 
     private struct Snapshot {
         let planName: String
         let creditsUsed: Double
         let creditsTotal: Double
+        let creditsPercent: Double?
         let bonusCreditsUsed: Double?
         let bonusCreditsTotal: Double?
         let bonusExpiryDays: Int?
@@ -1839,6 +1795,66 @@ struct KiroQuotaProvider: QuotaProvider {
         QuotaRuntimeSupport.resolvedBinary(defaultBinary: "kiro-cli", providerID: .kiro)
     }
 
+    func _test_snapshot(output: String, now: Date = Date()) throws -> QuotaSnapshot {
+        try makeSnapshot(from: parseUsage(output: output), now: now)
+    }
+
+    private func makeSnapshot(from snapshot: Snapshot, now: Date = Date()) -> QuotaSnapshot {
+        let primaryWindow = quotaWindow(
+            label: descriptor.primaryLabel,
+            usedRatio: snapshot.creditsPercent.map { min(max($0 / 100.0, 0), 1) }
+                ?? quotaRatio(used: snapshot.creditsUsed, total: snapshot.creditsTotal),
+            detail: snapshot.creditsTotal > 0
+                ? String(format: "%.0f / %.0f covered in plan", snapshot.creditsUsed, snapshot.creditsTotal)
+                : nil,
+            resetsAt: snapshot.resetsAt
+        )
+        let bonusDetail: String? = {
+            guard let bonusUsed = snapshot.bonusCreditsUsed,
+                  let bonusTotal = snapshot.bonusCreditsTotal
+            else { return nil }
+            if let expiryDays = snapshot.bonusExpiryDays {
+                return String(format: "%.0f / %.0f used • expires in %dd", bonusUsed, bonusTotal, expiryDays)
+            }
+            return String(format: "%.0f / %.0f used", bonusUsed, bonusTotal)
+        }()
+        let secondaryWindow = quotaWindow(
+            label: descriptor.secondaryLabel ?? "Bonus",
+            usedRatio: quotaRatio(used: snapshot.bonusCreditsUsed, total: snapshot.bonusCreditsTotal),
+            detail: bonusDetail,
+            resetsAt: snapshot.bonusExpiryDays.flatMap { Calendar.current.date(byAdding: .day, value: $0, to: now) }
+        )
+        let credits: QuotaCredits? = if snapshot.creditsTotal > 0 {
+            QuotaCredits(
+                label: "Credits",
+                used: snapshot.creditsUsed,
+                total: snapshot.creditsTotal,
+                remaining: max(0, snapshot.creditsTotal - snapshot.creditsUsed),
+                currencyCode: nil,
+                isUnlimited: false
+            )
+        } else {
+            nil
+        }
+
+        return QuotaSnapshot(
+            providerID: .kiro,
+            source: .cli,
+            primaryWindow: primaryWindow,
+            secondaryWindow: secondaryWindow,
+            tertiaryWindow: nil,
+            credits: credits,
+            identity: QuotaIdentity(
+                email: nil,
+                organization: snapshot.planName,
+                plan: snapshot.planName,
+                detail: nil
+            ),
+            updatedAt: snapshot.updatedAt,
+            note: nil
+        )
+    }
+
     private func parseUsage(output: String) throws -> Snapshot {
         let stripped = QuotaRuntimeSupport.stripANSI(output)
         let lowered = stripped.lowercased()
@@ -1848,6 +1864,7 @@ struct KiroQuotaProvider: QuotaProvider {
         }
 
         var planName = "Kiro"
+        var matchedNewFormat = false
         if let planMatch = stripped.range(of: #"\|\s*(KIRO\s+\w+)"#, options: .regularExpression) {
             planName = String(stripped[planMatch]).replacingOccurrences(of: "|", with: "").trimmingCharacters(in: .whitespaces)
         }
@@ -1855,6 +1872,7 @@ struct KiroQuotaProvider: QuotaProvider {
             let planLine = stripped[planMatch].replacingOccurrences(of: "Plan:", with: "")
             if let firstLine = planLine.split(separator: "\n").first {
                 planName = String(firstLine).trimmingCharacters(in: .whitespaces)
+                matchedNewFormat = true
             }
         }
 
@@ -1868,8 +1886,10 @@ struct KiroQuotaProvider: QuotaProvider {
         }
 
         var creditsUsed: Double = 0
-        var creditsTotal: Double = 50
+        var creditsTotal: Double = 0
         var creditsPercent: Double?
+        var matchedCredits = false
+        var matchedPercent = false
 
         if let creditsMatch = stripped.range(of: #"\((\d+\.?\d*)\s+of\s+(\d+)\s+covered"#, options: .regularExpression) {
             let text = String(stripped[creditsMatch])
@@ -1877,6 +1897,7 @@ struct KiroQuotaProvider: QuotaProvider {
             if numbers.count >= 2 {
                 creditsUsed = numbers[0]
                 creditsTotal = numbers[1]
+                matchedCredits = true
             }
         }
 
@@ -1884,15 +1905,17 @@ struct KiroQuotaProvider: QuotaProvider {
            let rawPercent = String(stripped[percentMatch]).range(of: #"\d+"#, options: .regularExpression)
         {
             creditsPercent = Double(String(String(stripped[percentMatch])[rawPercent]))
+            matchedPercent = true
         } else if creditsTotal > 0 {
             creditsPercent = (creditsUsed / creditsTotal) * 100.0
         }
 
-        if isManagedPlan, creditsPercent == nil {
+        if matchedNewFormat, isManagedPlan, !matchedPercent, !matchedCredits {
             return Snapshot(
                 planName: planName,
                 creditsUsed: 0,
                 creditsTotal: 0,
+                creditsPercent: nil,
                 bonusCreditsUsed: nil,
                 bonusCreditsTotal: nil,
                 bonusExpiryDays: nil,
@@ -1926,6 +1949,7 @@ struct KiroQuotaProvider: QuotaProvider {
             planName: planName,
             creditsUsed: creditsUsed,
             creditsTotal: creditsTotal,
+            creditsPercent: creditsPercent,
             bonusCreditsUsed: bonusUsed,
             bonusCreditsTotal: bonusTotal,
             bonusExpiryDays: bonusExpiryDays,

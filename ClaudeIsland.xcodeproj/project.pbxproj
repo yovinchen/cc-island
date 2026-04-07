@@ -10,10 +10,12 @@
 		FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
 		FDA49F7D2EE11E3C00F9612E /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = FD33FD722EDF32D7002A6548 /* Markdown */; };
 		FDA49F7E2EE11E3C00F9612E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FDA49F7F2EE11E3C00F9612E /* Sparkle */; };
+		FEA700012F01000100980001 /* SweetCookieKit in Frameworks */ = {isa = PBXBuildFile; productRef = FEA700032F01000100980001 /* SweetCookieKit */; };
 		FDB01A0C2EF0000009800001 /* claude-island-bridge in Copy Helpers */ = {isa = PBXBuildFile; fileRef = FDB01A012EF0000009800001 /* claude-island-bridge */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		FDC1000C2EF100000980000C /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = FD33FD722EDF32D7002A6548 /* Markdown */; };
 		FDC1000D2EF100000980000D /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FDA49F7F2EE11E3C00F9612E /* Sparkle */; };
 		FDC1000E2EF100000980000E /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
+		FEA700022F01000100980001 /* SweetCookieKit in Frameworks */ = {isa = PBXBuildFile; productRef = FEA700032F01000100980001 /* SweetCookieKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,6 +94,7 @@
 				FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */,
 				FDA49F7D2EE11E3C00F9612E /* Markdown in Frameworks */,
 				FDA49F7E2EE11E3C00F9612E /* Sparkle in Frameworks */,
+				FEA700012F01000100980001 /* SweetCookieKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +112,7 @@
 				FDC1000E2EF100000980000E /* Mixpanel in Frameworks */,
 				FDC1000C2EF100000980000C /* Markdown in Frameworks */,
 				FDC1000D2EF100000980000D /* Sparkle in Frameworks */,
+				FEA700022F01000100980001 /* SweetCookieKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,6 +164,7 @@
 				FD33FD722EDF32D7002A6548 /* Markdown */,
 				FDA49F7F2EE11E3C00F9612E /* Sparkle */,
 				FD0F42E62EE7ABA400980302 /* Mixpanel */,
+				FEA700032F01000100980001 /* SweetCookieKit */,
 			);
 			productName = ClaudeIsland;
 			productReference = FD33FD5D2EDF32D7002A6548 /* Claude Island.app */;
@@ -205,6 +210,7 @@
 				FD33FD722EDF32D7002A6548 /* Markdown */,
 				FDA49F7F2EE11E3C00F9612E /* Sparkle */,
 				FD0F42E62EE7ABA400980302 /* Mixpanel */,
+				FEA700032F01000100980001 /* SweetCookieKit */,
 			);
 			productName = ClaudeIslandTests;
 			productReference = FDC100012EF1000009800001 /* ClaudeIslandTests.xctest */;
@@ -242,6 +248,7 @@
 				FD33FD712EDF32D7002A6548 /* XCRemoteSwiftPackageReference "swift-markdown" */,
 				FDA49F802EE11E3C00F9612E /* XCRemoteSwiftPackageReference "Sparkle" */,
 				FD0F42E52EE7ABA400980302 /* XCRemoteSwiftPackageReference "mixpanel-swift" */,
+				FEA700042F01000100980001 /* XCRemoteSwiftPackageReference "SweetCookieKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FD33FD5E2EDF32D7002A6548 /* Products */;
@@ -643,6 +650,14 @@
 				minimumVersion = 2.0.0;
 			};
 		};
+		FEA700042F01000100980001 /* XCRemoteSwiftPackageReference "SweetCookieKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/steipete/SweetCookieKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.4.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -660,6 +675,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = FDA49F802EE11E3C00F9612E /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		FEA700032F01000100980001 /* SweetCookieKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FEA700042F01000100980001 /* XCRemoteSwiftPackageReference "SweetCookieKit" */;
+			productName = SweetCookieKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

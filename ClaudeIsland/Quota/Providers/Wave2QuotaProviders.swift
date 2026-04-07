@@ -10,13 +10,143 @@ import FoundationXML
 
 // MARK: - Copilot
 
+struct CopilotDeviceFlow: Sendable {
+    private let clientID = "Iv1.b507a08c87ecfe98"
+    private let scopes = "read:user"
+
+    struct DeviceCodeResponse: Decodable, Sendable {
+        let deviceCode: String
+        let userCode: String
+        let verificationUri: String
+        let expiresIn: Int
+        let interval: Int
+
+        enum CodingKeys: String, CodingKey {
+            case deviceCode = "device_code"
+            case userCode = "user_code"
+            case verificationUri = "verification_uri"
+            case expiresIn = "expires_in"
+            case interval
+        }
+    }
+
+    struct AccessTokenResponse: Decodable, Sendable {
+        let accessToken: String
+        let tokenType: String
+        let scope: String
+
+        enum CodingKeys: String, CodingKey {
+            case accessToken = "access_token"
+            case tokenType = "token_type"
+            case scope
+        }
+    }
+
+    func requestDeviceCode() async throws -> DeviceCodeResponse {
+        var request = URLRequest(url: URL(string: "https://github.com/login/device/code")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Self.formURLEncodedBody([
+            "client_id": clientID,
+            "scope": scopes,
+        ])
+
+        let (data, response) = try await QuotaRuntimeSupport.data(for: request)
+        guard response.statusCode == 200 else {
+            throw QuotaProviderError.invalidResponse("GitHub device code request returned HTTP \(response.statusCode)")
+        }
+        return try JSONDecoder().decode(DeviceCodeResponse.self, from: data)
+    }
+
+    func pollForToken(deviceCode: String, interval: Int) async throws -> String {
+        var request = URLRequest(url: URL(string: "https://github.com/login/oauth/access_token")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Self.formURLEncodedBody([
+            "client_id": clientID,
+            "device_code": deviceCode,
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+        ])
+
+        var currentInterval = max(interval, 1)
+
+        while true {
+            try await Task.sleep(nanoseconds: UInt64(currentInterval) * 1_000_000_000)
+            try Task.checkCancellation()
+
+            let (data, response) = try await QuotaRuntimeSupport.data(for: request)
+            guard response.statusCode == 200 else {
+                throw QuotaProviderError.invalidResponse("GitHub token request returned HTTP \(response.statusCode)")
+            }
+
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String
+            {
+                switch error {
+                case "authorization_pending":
+                    continue
+                case "slow_down":
+                    currentInterval += 5
+                    continue
+                case "expired_token":
+                    throw QuotaProviderError.commandFailed("GitHub device code expired before authorization completed.")
+                case "access_denied":
+                    throw QuotaProviderError.commandFailed("GitHub authorization was denied.")
+                default:
+                    let description = json["error_description"] as? String ?? error
+                    throw QuotaProviderError.commandFailed("GitHub device flow failed: \(description)")
+                }
+            }
+
+            if let tokenResponse = try? JSONDecoder().decode(AccessTokenResponse.self, from: data) {
+                return tokenResponse.accessToken
+            }
+        }
+    }
+
+    private static func formURLEncodedBody(_ parameters: [String: String]) -> Data {
+        let pairs = parameters
+            .map { key, value in
+                "\(formEncode(key))=\(formEncode(value))"
+            }
+            .joined(separator: "&")
+        return Data(pairs.utf8)
+    }
+
+    private static func formEncode(_ value: String) -> String {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "+&=")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+    }
+}
+
 struct CopilotUsageResponse: Decodable, Sendable {
+    private struct AnyCodingKey: CodingKey {
+        let stringValue: String
+        let intValue: Int?
+
+        init?(stringValue: String) {
+            self.stringValue = stringValue
+            intValue = nil
+        }
+
+        init?(intValue: Int) {
+            stringValue = String(intValue)
+            self.intValue = intValue
+        }
+    }
+
     struct QuotaSnapshot: Decodable, Sendable {
         let entitlement: Double
         let remaining: Double
         let percentRemaining: Double
         let quotaId: String
         let hasPercentRemaining: Bool
+        var isPlaceholder: Bool {
+            entitlement == 0 && remaining == 0 && percentRemaining == 0 && quotaId.isEmpty
+        }
 
         private enum CodingKeys: String, CodingKey {
             case entitlement
@@ -58,7 +188,42 @@ struct CopilotUsageResponse: Decodable, Sendable {
             quotaId = try container.decodeIfPresent(String.self, forKey: .quotaId) ?? ""
         }
 
-        private static func decodeNumber(_ container: KeyedDecodingContainer<CodingKeys>, key: CodingKeys) -> Double? {
+        private static func decodeNumber(
+            _ container: KeyedDecodingContainer<CodingKeys>,
+            key: CodingKeys
+        ) -> Double? {
+            if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
+                return value
+            }
+            if let value = try? container.decodeIfPresent(Int.self, forKey: key) {
+                return Double(value)
+            }
+            if let value = try? container.decodeIfPresent(String.self, forKey: key) {
+                return Double(value)
+            }
+            return nil
+        }
+    }
+
+    struct QuotaCounts: Decodable, Sendable {
+        let chat: Double?
+        let completions: Double?
+
+        private enum CodingKeys: String, CodingKey {
+            case chat
+            case completions
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            chat = Self.decodeNumber(container, key: .chat)
+            completions = Self.decodeNumber(container, key: .completions)
+        }
+
+        private static func decodeNumber(
+            _ container: KeyedDecodingContainer<CodingKeys>,
+            key: CodingKeys
+        ) -> Double? {
             if let value = try? container.decodeIfPresent(Double.self, forKey: key) {
                 return value
             }
@@ -80,14 +245,147 @@ struct CopilotUsageResponse: Decodable, Sendable {
             case premiumInteractions = "premium_interactions"
             case chat
         }
+
+        init(premiumInteractions: QuotaSnapshot?, chat: QuotaSnapshot?) {
+            self.premiumInteractions = premiumInteractions
+            self.chat = chat
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            var premium = try container.decodeIfPresent(QuotaSnapshot.self, forKey: .premiumInteractions)
+            var chat = try container.decodeIfPresent(QuotaSnapshot.self, forKey: .chat)
+
+            if premium?.isPlaceholder == true {
+                premium = nil
+            }
+            if chat?.isPlaceholder == true {
+                chat = nil
+            }
+
+            if premium == nil || chat == nil {
+                let dynamic = try decoder.container(keyedBy: AnyCodingKey.self)
+                var fallbackPremium: QuotaSnapshot?
+                var fallbackChat: QuotaSnapshot?
+                var firstUsable: QuotaSnapshot?
+
+                for key in dynamic.allKeys {
+                    guard let snapshot = try? dynamic.decodeIfPresent(QuotaSnapshot.self, forKey: key),
+                          !snapshot.isPlaceholder
+                    else {
+                        continue
+                    }
+
+                    let name = key.stringValue.lowercased()
+                    if firstUsable == nil {
+                        firstUsable = snapshot
+                    }
+                    if fallbackChat == nil, name.contains("chat") {
+                        fallbackChat = snapshot
+                        continue
+                    }
+                    if fallbackPremium == nil,
+                       name.contains("premium") || name.contains("completion") || name.contains("code")
+                    {
+                        fallbackPremium = snapshot
+                    }
+                }
+
+                if premium == nil {
+                    premium = fallbackPremium
+                }
+                if chat == nil {
+                    chat = fallbackChat
+                }
+                if premium == nil, chat == nil {
+                    chat = firstUsable
+                }
+            }
+
+            premiumInteractions = premium
+            self.chat = chat
+        }
     }
 
     let quotaSnapshots: QuotaSnapshots
     let copilotPlan: String
+    let assignedDate: String?
+    let quotaResetDate: String?
 
     private enum CodingKeys: String, CodingKey {
         case quotaSnapshots = "quota_snapshots"
         case copilotPlan = "copilot_plan"
+        case assignedDate = "assigned_date"
+        case quotaResetDate = "quota_reset_date"
+        case monthlyQuotas = "monthly_quotas"
+        case limitedUserQuotas = "limited_user_quotas"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let directSnapshots = try container.decodeIfPresent(QuotaSnapshots.self, forKey: .quotaSnapshots)
+        let monthlyQuotas = try container.decodeIfPresent(QuotaCounts.self, forKey: .monthlyQuotas)
+        let limitedUserQuotas = try container.decodeIfPresent(QuotaCounts.self, forKey: .limitedUserQuotas)
+        let fallbackSnapshots = Self.makeQuotaSnapshots(monthly: monthlyQuotas, limited: limitedUserQuotas)
+
+        let premium = Self.usableQuotaSnapshot(from: directSnapshots?.premiumInteractions)
+            ?? Self.usableQuotaSnapshot(from: fallbackSnapshots?.premiumInteractions)
+        let chat = Self.usableQuotaSnapshot(from: directSnapshots?.chat)
+            ?? Self.usableQuotaSnapshot(from: fallbackSnapshots?.chat)
+
+        if premium != nil || chat != nil {
+            quotaSnapshots = QuotaSnapshots(premiumInteractions: premium, chat: chat)
+        } else {
+            quotaSnapshots = directSnapshots ?? QuotaSnapshots(premiumInteractions: nil, chat: nil)
+        }
+
+        copilotPlan = try container.decodeIfPresent(String.self, forKey: .copilotPlan) ?? "unknown"
+        assignedDate = try container.decodeIfPresent(String.self, forKey: .assignedDate)
+        quotaResetDate = try container.decodeIfPresent(String.self, forKey: .quotaResetDate)
+    }
+
+    private static func makeQuotaSnapshots(monthly: QuotaCounts?, limited: QuotaCounts?) -> QuotaSnapshots? {
+        let premium = makeQuotaSnapshot(
+            monthly: monthly?.completions,
+            limited: limited?.completions,
+            quotaID: "completions"
+        )
+        let chat = makeQuotaSnapshot(
+            monthly: monthly?.chat,
+            limited: limited?.chat,
+            quotaID: "chat"
+        )
+        guard premium != nil || chat != nil else {
+            return nil
+        }
+        return QuotaSnapshots(premiumInteractions: premium, chat: chat)
+    }
+
+    private static func makeQuotaSnapshot(monthly: Double?, limited: Double?, quotaID: String) -> QuotaSnapshot? {
+        guard let monthly, let limited else {
+            return nil
+        }
+
+        let entitlement = max(0, monthly)
+        guard entitlement > 0 else {
+            return nil
+        }
+
+        let remaining = max(0, limited)
+        let percentRemaining = max(0, min(100, (remaining / entitlement) * 100))
+        return QuotaSnapshot(
+            entitlement: entitlement,
+            remaining: remaining,
+            percentRemaining: percentRemaining,
+            quotaId: quotaID
+        )
+    }
+
+    private static func usableQuotaSnapshot(from snapshot: QuotaSnapshot?) -> QuotaSnapshot? {
+        guard let snapshot, !snapshot.isPlaceholder, snapshot.hasPercentRemaining else {
+            return nil
+        }
+        return snapshot
     }
 }
 
@@ -123,8 +421,17 @@ struct CopilotQuotaProvider: QuotaProvider {
         }
 
         let usage = try JSONDecoder().decode(CopilotUsageResponse.self, from: data)
-        let premiumWindow = makeWindow(label: descriptor.primaryLabel, snapshot: usage.quotaSnapshots.premiumInteractions)
-        let chatWindow = makeWindow(label: descriptor.secondaryLabel ?? "Chat", snapshot: usage.quotaSnapshots.chat)
+        let resetDate = quotaResetDate(usage.quotaResetDate)
+        let premiumWindow = makeWindow(
+            label: descriptor.primaryLabel,
+            snapshot: usage.quotaSnapshots.premiumInteractions,
+            resetsAt: resetDate
+        )
+        let chatWindow = makeWindow(
+            label: descriptor.secondaryLabel ?? "Chat",
+            snapshot: usage.quotaSnapshots.chat,
+            resetsAt: resetDate
+        )
 
         let primaryWindow: QuotaWindow?
         let secondaryWindow: QuotaWindow?
@@ -158,15 +465,35 @@ struct CopilotQuotaProvider: QuotaProvider {
         SavedProviderTokenResolver.token(for: QuotaProviderID.copilot, envKeys: ["GITHUB_TOKEN", "COPILOT_TOKEN"])
     }
 
-    private func makeWindow(label: String, snapshot: CopilotUsageResponse.QuotaSnapshot?) -> QuotaWindow? {
+    private func makeWindow(
+        label: String,
+        snapshot: CopilotUsageResponse.QuotaSnapshot?,
+        resetsAt: Date?
+    ) -> QuotaWindow? {
         guard let snapshot, snapshot.hasPercentRemaining else { return nil }
         let usedRatio = max(0, min(1, (100 - snapshot.percentRemaining) / 100))
         return QuotaWindow(
             label: label,
             usedRatio: usedRatio,
             detail: nil,
-            resetsAt: nil
+            resetsAt: resetsAt
         )
+    }
+
+    private func quotaResetDate(_ raw: String?) -> Date? {
+        guard let cleaned = QuotaUtilities.cleaned(raw) else {
+            return nil
+        }
+        if let date = QuotaUtilities.isoDate(cleaned) {
+            return date
+        }
+
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: cleaned)
     }
 }
 

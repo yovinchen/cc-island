@@ -22,6 +22,8 @@ struct QuotaSettingsPane: View {
     @State private var cliBinaryPath = ""
     @State private var importingSessionProviderID: QuotaProviderID?
     @State private var sessionImportFeedback: SessionImportFeedback?
+    @State private var authenticatingCopilot = false
+    @State private var copilotLoginFeedback: SessionImportFeedback?
 
     private var selectedRecord: QuotaProviderRecord? {
         quotaStore.record(for: selectedProviderID) ?? quotaStore.orderedRecords.first
@@ -68,6 +70,7 @@ struct QuotaSettingsPane: View {
             loadSecretIfNeeded(force: true)
             loadProviderPreferences()
             sessionImportFeedback = nil
+            copilotLoginFeedback = nil
         }
         .onChange(of: quotaStore.orderedRecords.map(\.id)) { _, _ in
             ensureSelection()
@@ -432,6 +435,32 @@ struct QuotaSettingsPane: View {
                 }
             }
 
+            if record.id == .copilot {
+                providerSettingsBlock(
+                    title: String(localized: "quota.copilot_sign_in"),
+                    caption: String(localized: "quota.copilot_sign_in_hint")
+                ) {
+                    if authenticatingCopilot {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Button(quotaStore.storedSecret(for: .copilot).isEmpty
+                               ? String(localized: "quota.copilot_sign_in_action")
+                               : String(localized: "quota.copilot_sign_in_reauth")) {
+                            Task { await authenticateCopilot() }
+                        }
+                        .buttonStyle(SettingsButtonStyle())
+                    }
+                }
+
+                if let copilotLoginFeedback {
+                    Text(copilotLoginFeedback.message)
+                        .font(.system(size: 12))
+                        .foregroundColor(copilotLoginFeedback.color)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             if QuotaWebSessionImportRunner.supports(providerID: record.id) {
                 providerSettingsBlock(
                     title: String(localized: "quota.import_session"),
@@ -792,6 +821,58 @@ struct QuotaSettingsPane: View {
         case .unsupported:
             sessionImportFeedback = SessionImportFeedback(
                 message: String(localized: "quota.import_session_unsupported"),
+                color: TerminalColors.red
+            )
+        }
+    }
+
+    @MainActor
+    private func authenticateCopilot() async {
+        guard !authenticatingCopilot else { return }
+        authenticatingCopilot = true
+        defer { authenticatingCopilot = false }
+
+        let flow = CopilotDeviceFlow()
+
+        do {
+            let code = try await flow.requestDeviceCode()
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(code.userCode, forType: .string)
+
+            if let url = URL(string: code.verificationUri) {
+                NSWorkspace.shared.open(url)
+            }
+
+            copilotLoginFeedback = SessionImportFeedback(
+                message: String(
+                    format: String(localized: "quota.copilot_sign_in_waiting %@ %@"),
+                    code.userCode,
+                    code.verificationUri
+                ),
+                color: .white.opacity(0.7)
+            )
+
+            let token = try await flow.pollForToken(deviceCode: code.deviceCode, interval: code.interval)
+            secretValue = token
+            quotaStore.saveSecret(token, for: .copilot)
+            loadSecretIfNeeded(force: true)
+            quotaStore.userVisibleRefresh(providerID: .copilot)
+            copilotLoginFeedback = SessionImportFeedback(
+                message: String(localized: "quota.copilot_sign_in_success"),
+                color: TerminalColors.green
+            )
+        } catch is CancellationError {
+            copilotLoginFeedback = SessionImportFeedback(
+                message: String(localized: "quota.import_session_cancelled"),
+                color: .white.opacity(0.5)
+            )
+        } catch {
+            copilotLoginFeedback = SessionImportFeedback(
+                message: String(
+                    format: String(localized: "quota.copilot_sign_in_failed %@"),
+                    error.localizedDescription
+                ),
                 color: TerminalColors.red
             )
         }

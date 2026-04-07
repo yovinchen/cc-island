@@ -85,6 +85,13 @@
 "quota.import_session_failed %@" = "Session import failed: %@";
 "quota.import_session_unsupported" = "This provider does not support in-app session import.";
 "quota.setup" = "Setup";
+"quota.copilot_sign_in" = "GitHub Sign-In";
+"quota.copilot_sign_in_hint" = "Start GitHub device-flow sign-in to fetch a Copilot token automatically.";
+"quota.copilot_sign_in_action" = "Sign In with GitHub";
+"quota.copilot_sign_in_reauth" = "Re-authenticate";
+"quota.copilot_sign_in_waiting %@ %@" = "GitHub code %@ was copied to your clipboard. Browser opened to %@. Waiting for authorization…";
+"quota.copilot_sign_in_success" = "GitHub authorization complete. Refreshing Copilot quota…";
+"quota.copilot_sign_in_failed %@" = "GitHub sign-in failed: %@";
 "quota.configuration" = "Configuration";
 "quota.source_mode" = "Refresh source";
 "quota.cli_binary" = "CLI path";
