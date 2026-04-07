@@ -644,7 +644,9 @@ class HookSocketServer {
     /// {"cancel":true|false,"errorMessage":"...","contextModification":"..."}.
     private func buildClineResponse(decision: String, reason: String?) -> Data? {
         var response: [String: Any] = [
-            "cancel": decision != "allow"
+            "cancel": decision != "allow",
+            "errorMessage": "",
+            "contextModification": ""
         ]
 
         if decision != "allow" {
