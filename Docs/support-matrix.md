@@ -82,7 +82,7 @@
 | 对象 | 设置/UI | 自动修复 | 配置监听 | 宿主聚焦 | 解析增强 | 备注 |
 |------|:------:|:--------:|:--------:|:--------:|:--------:|------|
 | Claude Code | ✅ | ✅ | ✅ | ✅ | ✅ | 含聊天记录 / StatusLine / 权限态 |
-| Cline / Cline CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件归一化已做，返回面仍首版；自定义 `CLINE_DIR` 已有运行时诊断，项目级 `.clinerules/hooks` 在存在时已纳入受管安装 |
+| Cline / Cline CLI | ✅ | ✅ | ✅ | — | ⚠️ | 事件归一化已做，返回面仍首版；自定义 `CLINE_DIR` 已有运行时诊断，项目级 `.clinerules/hooks` 在存在时已纳入受管安装，`postToolUse` 结果/耗时提取更完整 |
 | Codex CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | notify + CLI hooks，细节仍在打磨 |
 | Codex Desktop | — | — | — | — | ✅ | transcript / rate-limit / reasoning 解析 |
 | Gemini CLI | ✅ | ✅ | ✅ | ✅ | ✅ | Gemini 专属生命周期已接入为通知类事件，项目级 `.gemini/settings.json` 在存在时也纳入受管安装 |
@@ -90,7 +90,7 @@
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kimi CLI | ✅ | ✅ | ✅ | — | ✅ | hooks 仍是主入口，`kimi-print` helper 已进入 auto-repair / watcher，并补充观察 `wire.jsonl` 的状态/失败信号 |
-| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher，workspace settings/plugins 已补诊断 |
+| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher，workspace settings/plugins 已补诊断，空 JSON 场景会收敛成明确错误 |
 | Qoder CLI | — | — | — | — | — | docs-only |
 | Pi Coding Agent | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher |
 | Crush | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher；日志仍是高层解析 |

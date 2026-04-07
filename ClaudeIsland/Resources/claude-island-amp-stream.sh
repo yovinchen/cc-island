@@ -97,6 +97,7 @@ result_error = ""
 tool_calls = {}
 seen_pre = set()
 seen_post = set()
+json_line_count = 0
 ansi_re = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]")
 
 def send(payload):
@@ -133,6 +134,7 @@ for raw in stream_path.read_text().splitlines():
         obj = json.loads(raw)
     except Exception:
         continue
+    json_line_count += 1
     msg_type = obj.get("type")
     message = obj.get("message") or {}
     content = message.get("content") or []
@@ -192,6 +194,14 @@ for raw in stream_path.read_text().splitlines():
             last_text = obj["result"].strip()
         elif isinstance(obj.get("message"), str) and obj.get("message").strip():
             last_text = obj["message"].strip()
+
+if json_line_count == 0 and not result_error:
+    raw_stream = ansi_re.sub("", stream_path.read_text()).strip()
+    if raw_stream:
+        snippet = raw_stream.splitlines()[0][:300]
+        result_error = f"Amp stream-json produced no parseable JSON lines: {snippet}"
+    else:
+        result_error = "Amp stream-json produced no parseable JSON output"
 
 last_path.write_text(last_text)
 error_path.write_text(result_error)'

@@ -619,6 +619,17 @@ enum EventMapper {
             }
             if let success = nested(input, "postToolUse", "success") as? Bool {
                 payload["message"] = success ? "Tool completed" : "Tool failed"
+                if success == false, payload["error"] == nil, let result = nested(input, "postToolUse", "result") {
+                    payload["error"] = stringify(result)
+                }
+            }
+            if let durationMs = nested(input, "postToolUse", "durationMs") {
+                let durationText = stringify(durationMs)
+                if let existing = payload["message"] as? String, !existing.isEmpty {
+                    payload["message"] = "\(existing) (\(durationText)ms)"
+                } else {
+                    payload["message"] = "Duration: \(durationText)ms"
+                }
             }
 
         case "precompact":
