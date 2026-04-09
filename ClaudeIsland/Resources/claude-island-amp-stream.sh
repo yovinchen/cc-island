@@ -273,6 +273,9 @@ if [ "${JSON_LINE_COUNT:-0}" -gt 0 ] && [ -s "$STREAM_FILE" ]; then
 fi
 
 if [ -n "$SANITIZED_STDERR" ]; then
+  if [ -z "$RESULT_ERROR" ] && [[ "$SANITIZED_STDERR" == *"Cannot reach Amp servers"* ]]; then
+    RESULT_ERROR="Amp CLI cannot reach Amp servers from the current environment."
+  fi
   print -r -- "$SANITIZED_STDERR" >&2
 elif [ -n "$RESULT_ERROR" ]; then
   print -r -- "$RESULT_ERROR" >&2

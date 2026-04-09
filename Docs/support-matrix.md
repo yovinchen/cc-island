@@ -90,7 +90,7 @@
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kimi CLI | ✅ | ✅ | ✅ | — | ✅ | hooks 仍是主入口，`kimi-print` helper 已进入 auto-repair / watcher，并补充观察 `wire.jsonl` 的状态/失败信号 |
-| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher，workspace settings/plugins 已补诊断，解析型入口会压低 ANSI 噪音并在空 JSON 场景收敛成明确错误 |
+| Amp CLI | ✅ | ✅ | ✅ | — | ✅ | plugin + `amp-exec` + `amp-stream`，helper 现已进入 auto-repair / watcher，workspace settings/plugins 已补诊断，解析型入口会压低 ANSI 噪音并把空 JSON / 网络前置失败收敛成明确错误 |
 | Qoder CLI | ✅ | ✅ | ✅ | — | ✅ | wrapper-first 入口已接入；当前已能恢复基础工具事件并过滤常见日志噪音，但仍不做正式 hooks 审批 |
 | Pi Coding Agent | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher |
 | Crush | ✅ | ✅ | ✅ | — | ✅ | helper 脚本现已进入 auto-repair / watcher；日志仍是高层解析 |

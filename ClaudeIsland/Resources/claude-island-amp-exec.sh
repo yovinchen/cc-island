@@ -101,14 +101,28 @@ STATUS=$?
 
 RESULT="$(cat "$STDOUT_FILE")"
 ERROR_OUTPUT="$(cat "$STDERR_FILE")"
+SANITIZED_ERROR_OUTPUT="$(python3 - <<'PY' "$STDERR_FILE"
+from pathlib import Path
+import re
+import sys
+path = Path(sys.argv[1])
+text = path.read_text(errors="ignore") if path.exists() else ""
+text = re.sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]", "", text).strip()
+print(text, end="")
+PY
+)"
 
 RESULT_JSON="$(escape_json "$RESULT")"
 
 if [ $STATUS -eq 0 ]; then
   send_event "{\"hook_event_name\":\"Stop\",\"session_id\":\"$SESSION_ID\",\"cwd\":$CWD_JSON,\"last_assistant_message\":$RESULT_JSON}"
 else
-  if [ -n "$ERROR_OUTPUT" ]; then
-    notify_error "$ERROR_OUTPUT"
+  if [ -n "$SANITIZED_ERROR_OUTPUT" ]; then
+    if [[ "$SANITIZED_ERROR_OUTPUT" == *"Cannot reach Amp servers"* ]]; then
+      notify_error "Amp CLI cannot reach Amp servers from the current environment."
+    else
+      notify_error "$SANITIZED_ERROR_OUTPUT"
+    fi
   elif [ -n "$RESULT" ]; then
     notify_error "$RESULT"
   else
@@ -122,8 +136,8 @@ if [ -n "$RESULT" ]; then
   print -r -- "$RESULT"
 fi
 
-if [ -n "$ERROR_OUTPUT" ]; then
-  print -r -- "$ERROR_OUTPUT" >&2
+if [ -n "$SANITIZED_ERROR_OUTPUT" ]; then
+  print -r -- "$SANITIZED_ERROR_OUTPUT" >&2
 fi
 
 exit $STATUS
