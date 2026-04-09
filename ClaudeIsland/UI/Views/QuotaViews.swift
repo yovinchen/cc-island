@@ -672,6 +672,10 @@ struct QuotaSettingsPane: View {
 
     private func providerDetectionText(for record: QuotaProviderRecord) -> String {
         switch record.id {
+        case .antigravity:
+            return AntigravityStatusProbe().isRunningSync()
+                ? String(localized: "quota.detected")
+                : String(localized: "quota.not_detected")
         case .cursor:
             if let binary = QuotaRuntimeSupport.which("cursor"),
                let version = QuotaRuntimeSupport.detectProviderVersion(providerID: .cursor, binaryPath: binary)
@@ -704,6 +708,20 @@ struct QuotaSettingsPane: View {
                 return String(localized: "quota.detected")
             }
             return String(localized: "quota.not_detected")
+        case .kilo:
+            if let binary = QuotaRuntimeSupport.which("kilo"),
+               let version = QuotaRuntimeSupport.detectProviderVersion(providerID: .kilo, binaryPath: binary)
+            {
+                return version
+            }
+            if quotaStore.storedSecret(for: .kilo).isEmpty == false || KiloSettingsReader.authToken() != nil {
+                return String(localized: "quota.detected")
+            }
+            return String(localized: "quota.not_detected")
+        case .vertexAI:
+            return VertexAIOAuthCredentialsStore.hasCredentials()
+                ? String(localized: "quota.detected")
+                : String(localized: "quota.not_detected")
         case .jetbrains:
             return JetBrainsIDEDetector.detectLatestIDE()?.displayName ?? String(localized: "quota.not_detected")
         case .warp:
@@ -1150,6 +1168,8 @@ private struct QuotaProviderBrandIcon: View {
             return .claude
         case .gemini:
             return .gemini
+        case .factory:
+            return .droid
         case .copilot:
             return .copilot
         case .cursor:
@@ -1164,7 +1184,7 @@ private struct QuotaProviderBrandIcon: View {
             return .kiroCLI
         case .kimiK2:
             return .kimiCLI
-        case .augment, .jetbrains, .openrouter, .warp, .zai:
+        case .antigravity, .alibaba, .augment, .jetbrains, .kilo, .vertexAI, .minimax, .ollama, .openrouter, .perplexity, .warp, .zai:
             return nil
         }
     }

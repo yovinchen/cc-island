@@ -67,6 +67,22 @@ enum QuotaProviderRegistry {
             sortPriority: 2
         ),
         QuotaProviderDescriptor(
+            id: .antigravity,
+            sourceKind: .local,
+            supportedSources: [.local],
+            cliBinaryName: nil,
+            primaryLabel: "Claude",
+            secondaryLabel: "Gemini Pro",
+            credentialHint: "Uses the local Antigravity language server to query model quota.",
+            credentialPlaceholder: nil,
+            supportsManualSecret: false,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: nil,
+            statusURL: "https://www.google.com/appsstatus/dashboard/products/npdyhgECDJ6tB66MxXyo/history",
+            sortPriority: 3
+        ),
+        QuotaProviderDescriptor(
             id: .copilot,
             sourceKind: .apiKey,
             supportedSources: [.apiKey],
@@ -80,7 +96,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://github.com/settings/copilot",
             statusURL: "https://www.githubstatus.com/",
-            sortPriority: 3
+            sortPriority: 4
         ),
         QuotaProviderDescriptor(
             id: .cursor,
@@ -96,7 +112,39 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://cursor.com",
             statusURL: nil,
-            sortPriority: 4
+            sortPriority: 5
+        ),
+        QuotaProviderDescriptor(
+            id: .alibaba,
+            sourceKind: .web,
+            supportedSources: [.web, .apiKey],
+            cliBinaryName: "alibaba-coding-plan",
+            primaryLabel: "5-hour",
+            secondaryLabel: "Weekly",
+            credentialHint: "Uses Alibaba Coding Plan web session or API token/region configuration.",
+            credentialPlaceholder: "Paste Cookie header or API token…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://tongyi.aliyun.com/qianwen/coding-plan",
+            statusURL: "https://status.aliyun.com",
+            sortPriority: 6
+        ),
+        QuotaProviderDescriptor(
+            id: .factory,
+            sourceKind: .web,
+            supportedSources: [.web],
+            cliBinaryName: "factory",
+            primaryLabel: "Standard",
+            secondaryLabel: "Premium",
+            credentialHint: "Uses Droid (Factory) browser session and WorkOS token flows.",
+            credentialPlaceholder: "Paste Cookie header…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://app.factory.ai/settings/billing",
+            statusURL: "https://status.factory.ai",
+            sortPriority: 7
         ),
         QuotaProviderDescriptor(
             id: .opencode,
@@ -112,7 +160,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://opencode.ai",
             statusURL: nil,
-            sortPriority: 5
+            sortPriority: 8
         ),
         QuotaProviderDescriptor(
             id: .amp,
@@ -128,7 +176,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://ampcode.com/settings",
             statusURL: nil,
-            sortPriority: 6
+            sortPriority: 9
         ),
         QuotaProviderDescriptor(
             id: .augment,
@@ -144,7 +192,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://app.augmentcode.com",
             statusURL: nil,
-            sortPriority: 7
+            sortPriority: 10
         ),
         QuotaProviderDescriptor(
             id: .kimi,
@@ -160,7 +208,23 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://www.kimi.com/code/console",
             statusURL: nil,
-            sortPriority: 8
+            sortPriority: 11
+        ),
+        QuotaProviderDescriptor(
+            id: .kilo,
+            sourceKind: .apiKey,
+            supportedSources: [.apiKey, .cli],
+            cliBinaryName: "kilo",
+            primaryLabel: "Credits",
+            secondaryLabel: "Kilo Pass",
+            credentialHint: "Uses KILO_API_KEY or local Kilo CLI auth session.",
+            credentialPlaceholder: "Paste API key…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://app.kilo.ai/usage",
+            statusURL: nil,
+            sortPriority: 12
         ),
         QuotaProviderDescriptor(
             id: .kiro,
@@ -176,7 +240,23 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://app.kiro.dev/account/usage",
             statusURL: "https://health.aws.amazon.com/health/status",
-            sortPriority: 9
+            sortPriority: 13
+        ),
+        QuotaProviderDescriptor(
+            id: .vertexAI,
+            sourceKind: .oauth,
+            supportedSources: [.oauth],
+            cliBinaryName: nil,
+            primaryLabel: "Requests",
+            secondaryLabel: "Tokens",
+            credentialHint: "Reads gcloud application default credentials for Vertex AI quota.",
+            credentialPlaceholder: nil,
+            supportsManualSecret: false,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://console.cloud.google.com/vertex-ai",
+            statusURL: "https://status.cloud.google.com",
+            sortPriority: 14
         ),
         QuotaProviderDescriptor(
             id: .jetbrains,
@@ -192,7 +272,39 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: nil,
             statusURL: nil,
-            sortPriority: 10
+            sortPriority: 15
+        ),
+        QuotaProviderDescriptor(
+            id: .minimax,
+            sourceKind: .web,
+            supportedSources: [.web, .apiKey],
+            cliBinaryName: "minimax",
+            primaryLabel: "Prompts",
+            secondaryLabel: "Window",
+            credentialHint: "Uses MiniMax coding plan web cookies or API token.",
+            credentialPlaceholder: "Paste Cookie header or API token…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://platform.minimax.io/user-center/payment/coding-plan?cycle_type=3",
+            statusURL: nil,
+            sortPriority: 16
+        ),
+        QuotaProviderDescriptor(
+            id: .ollama,
+            sourceKind: .web,
+            supportedSources: [.web],
+            cliBinaryName: "ollama",
+            primaryLabel: "Session",
+            secondaryLabel: "Weekly",
+            credentialHint: "Uses Ollama browser session cookies to fetch usage data.",
+            credentialPlaceholder: "Paste Cookie header…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://ollama.com/settings",
+            statusURL: nil,
+            sortPriority: 17
         ),
         QuotaProviderDescriptor(
             id: .openrouter,
@@ -208,7 +320,23 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://openrouter.ai/settings/credits",
             statusURL: "https://status.openrouter.ai",
-            sortPriority: 11
+            sortPriority: 18
+        ),
+        QuotaProviderDescriptor(
+            id: .perplexity,
+            sourceKind: .web,
+            supportedSources: [.web],
+            cliBinaryName: "perplexity",
+            primaryLabel: "Credits",
+            secondaryLabel: "Bonus credits",
+            credentialHint: "Uses Perplexity browser session cookies to fetch usage.",
+            credentialPlaceholder: "Paste Cookie header…",
+            supportsManualSecret: true,
+            defaultEnabled: false,
+            refreshInterval: 300,
+            dashboardURL: "https://www.perplexity.ai/account/usage",
+            statusURL: "https://status.perplexity.com",
+            sortPriority: 19
         ),
         QuotaProviderDescriptor(
             id: .warp,
@@ -224,7 +352,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://docs.warp.dev/reference/cli/api-keys",
             statusURL: nil,
-            sortPriority: 12
+            sortPriority: 20
         ),
         QuotaProviderDescriptor(
             id: .kimiK2,
@@ -240,7 +368,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://kimi-k2.ai/my-credits",
             statusURL: nil,
-            sortPriority: 13
+            sortPriority: 21
         ),
         QuotaProviderDescriptor(
             id: .zai,
@@ -256,7 +384,7 @@ enum QuotaProviderRegistry {
             refreshInterval: 300,
             dashboardURL: "https://z.ai/manage-apikey/subscription",
             statusURL: nil,
-            sortPriority: 14
+            sortPriority: 22
         ),
     ]
 
@@ -270,10 +398,22 @@ enum QuotaProviderRegistry {
                 provider = ClaudeQuotaProvider()
             case .gemini:
                 provider = GeminiQuotaProvider()
+            case .antigravity:
+                provider = AntigravityQuotaProvider()
             case .copilot:
                 provider = CopilotQuotaProvider()
             case .cursor:
                 provider = CursorQuotaProvider()
+            case .alibaba:
+                provider = UnsupportedQuotaProvider(
+                    descriptor: descriptor,
+                    message: "Alibaba quota provider parity is not implemented yet."
+                )
+            case .factory:
+                provider = UnsupportedQuotaProvider(
+                    descriptor: descriptor,
+                    message: "Droid quota provider parity is not implemented yet."
+                )
             case .opencode:
                 provider = OpenCodeQuotaProvider()
             case .amp:
@@ -282,12 +422,31 @@ enum QuotaProviderRegistry {
                 provider = AugmentQuotaProvider()
             case .kimi:
                 provider = KimiQuotaProvider()
+            case .kilo:
+                provider = KiloQuotaProvider()
             case .kiro:
                 provider = KiroQuotaProvider()
+            case .vertexAI:
+                provider = VertexAIQuotaProvider()
             case .jetbrains:
                 provider = JetBrainsQuotaProvider()
+            case .minimax:
+                provider = UnsupportedQuotaProvider(
+                    descriptor: descriptor,
+                    message: "MiniMax quota provider parity is not implemented yet."
+                )
+            case .ollama:
+                provider = UnsupportedQuotaProvider(
+                    descriptor: descriptor,
+                    message: "Ollama quota provider parity is not implemented yet."
+                )
             case .openrouter:
                 provider = OpenRouterQuotaProvider()
+            case .perplexity:
+                provider = UnsupportedQuotaProvider(
+                    descriptor: descriptor,
+                    message: "Perplexity quota provider parity is not implemented yet."
+                )
             case .warp:
                 provider = WarpQuotaProvider()
             case .kimiK2:

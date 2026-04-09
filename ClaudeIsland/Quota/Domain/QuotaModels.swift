@@ -11,15 +11,23 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
     case codex
     case claude
     case gemini
+    case antigravity
     case copilot
     case cursor
+    case alibaba
+    case factory
     case opencode
     case amp
     case augment
     case kimi
+    case kilo
     case kiro
+    case vertexAI = "vertexai"
     case jetbrains
+    case minimax
+    case ollama
     case openrouter
+    case perplexity
     case warp
     case kimiK2 = "kimi_k2"
     case zai
@@ -31,15 +39,23 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .codex: return "Codex"
         case .claude: return "Claude"
         case .gemini: return "Gemini"
+        case .antigravity: return "Antigravity"
         case .copilot: return "Copilot"
         case .cursor: return "Cursor"
+        case .alibaba: return "Alibaba"
+        case .factory: return "Droid"
         case .opencode: return "OpenCode"
         case .amp: return "Amp"
         case .augment: return "Augment"
         case .kimi: return "Kimi"
+        case .kilo: return "Kilo"
         case .kiro: return "Kiro"
+        case .vertexAI: return "Vertex AI"
         case .jetbrains: return "JetBrains AI"
+        case .minimax: return "MiniMax"
+        case .ollama: return "Ollama"
         case .openrouter: return "OpenRouter"
+        case .perplexity: return "Perplexity"
         case .warp: return "Warp"
         case .kimiK2: return "Kimi K2"
         case .zai: return "z.ai"
@@ -51,11 +67,19 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .openrouter: return "OR"
         case .copilot: return "GH"
         case .cursor: return "CS"
+        case .alibaba: return "AL"
+        case .factory: return "DR"
         case .opencode: return "OC"
         case .amp: return "AMP"
         case .augment: return "AU"
+        case .vertexAI: return "VA"
         case .jetbrains: return "JB"
+        case .minimax: return "MM"
+        case .perplexity: return "PX"
         case .kimiK2: return "K2"
+        case .kilo: return "KL"
+        case .ollama: return "OL"
+        case .antigravity: return "AG"
         default: return displayName
         }
     }
@@ -65,15 +89,23 @@ enum QuotaProviderID: String, CaseIterable, Codable, Identifiable, Sendable {
         case .codex: return "triangle.3d"
         case .claude: return "sun.max"
         case .gemini: return "sparkle"
+        case .antigravity: return "sparkles.square.filled.on.square"
         case .copilot: return "person.crop.circle.badge.checkmark"
         case .cursor: return "cursorarrow.rays"
+        case .alibaba: return "building.2"
+        case .factory: return "fanblades"
         case .opencode: return "curlybraces.square"
         case .amp: return "bolt.circle"
         case .augment: return "wand.and.stars"
         case .kimi: return "moon.stars"
+        case .kilo: return "creditcard.and.123"
         case .kiro: return "terminal"
+        case .vertexAI: return "cloud"
         case .jetbrains: return "chevron.left.forwardslash.chevron.right"
+        case .minimax: return "waveform.path.ecg"
+        case .ollama: return "cube.transparent"
         case .openrouter: return "network"
+        case .perplexity: return "questionmark.circle"
         case .warp: return "paperplane"
         case .kimiK2: return "creditcard"
         case .zai: return "chart.xyaxis.line"
