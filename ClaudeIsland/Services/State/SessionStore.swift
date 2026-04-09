@@ -355,6 +355,23 @@ actor SessionStore {
                 return "Local Qoder config detected at .qoder/settings.local.json; Claude Island will manage that layer alongside your user-level hooks when present."
             }
             return nil
+        case .qoderCLI:
+            let projectDir = URL(fileURLWithPath: cwd).appendingPathComponent(".qoder")
+            let projectSettings = projectDir.appendingPathComponent("settings.json").path
+            let projectLocalSettings = projectDir.appendingPathComponent("settings.local.json").path
+            let hasProjectSettings = FileManager.default.fileExists(atPath: projectSettings)
+            let hasProjectLocalSettings = FileManager.default.fileExists(atPath: projectLocalSettings)
+
+            if hasProjectSettings && hasProjectLocalSettings {
+                return "Project Qoder CLI configs detected at .qoder/settings.json and .qoder/settings.local.json; wrapper-first monitoring will run alongside those project layers when present."
+            }
+            if hasProjectSettings {
+                return "Project Qoder CLI config detected at .qoder/settings.json; wrapper-first monitoring will run alongside that project layer when present."
+            }
+            if hasProjectLocalSettings {
+                return "Local Qoder CLI config detected at .qoder/settings.local.json; wrapper-first monitoring will run alongside that project layer when present."
+            }
+            return nil
         case .ampCLI:
             let projectDir = URL(fileURLWithPath: cwd).appendingPathComponent(".amp")
             let projectSettings = projectDir.appendingPathComponent("settings.json").path
