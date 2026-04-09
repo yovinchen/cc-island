@@ -53,6 +53,8 @@ struct SourceIcon: View {
             OpenCodePixelIcon(size: size)
         case .codebuddy:
             CodeBuddyPixelIcon(size: size)
+        case .antigravity:
+            GeminiPixelIcon(size: size)
         case .qoder:
             QoderPixelIcon(size: size)
         case .qoderCLI:

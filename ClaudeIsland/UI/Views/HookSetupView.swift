@@ -20,7 +20,7 @@ struct HookSetupView: View {
 
     private let allTools: [SessionSource] = [
         .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
-        .ampCLI, .opencode, .copilot, .pi, .crush,
+        .ampCLI, .opencode, .copilot, .pi, .crush, .antigravity,
         .qoder, .qoderCLI, .droid, .codebuddy
     ]
 
@@ -284,6 +284,7 @@ struct ToolSetupRow: View {
         case .ampCLI: return "~/.config/amp/plugins/claude-island.ts (+ diagnose-only .amp/settings.json / .amp/plugins/ workspace layers)"
         case .pi: return "~/.claude-island/bin/claude-island-pi + claude-island-pi-json"
         case .crush: return "~/.claude-island/bin/claude-island-crush"
+        case .antigravity: return "~/.claude-island/bin/claude-island-antigravity-chat (+ logs under ~/Library/Application Support/Antigravity/logs)"
         case .opencode: return "~/.config/opencode/plugins/"
         case .copilot: return "~/.copilot/config.json (+ optional .github/hooks/*.json, ~/.claude-island/bin/claude-island-copilot-json)"
         case .qoder: return "~/.qoder/settings.json (+ managed .qoder/settings.json / .qoder/settings.local.json when present)"

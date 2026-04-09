@@ -8,9 +8,9 @@
 
 | 项目 | 状态 | 说明 |
 |------|------|------|
-| `SessionSource` / `HookSource` | ❌ | 仓库中没有 Antigravity 的枚举、安装器、事件映射 |
-| 宿主识别 | ❌ | 当前未检测 Antigravity app 或其终端/IDE 进程 |
-| 文档/README | ❌ | README 和 docs 里都还没有 Antigravity 接入说明 |
+| `SessionSource` / helper | ⚠️ | 当前已新增 `SessionSource.antigravity` 与 `claude-island-antigravity-chat` helper |
+| 宿主识别 | ⚠️ | 当前已检测 `~/.antigravity` 安装与本地日志目录 |
+| 文档/README | ⚠️ | 当前已开始记录为部分支持 |
 
 ## 官方可用扩展面
 
@@ -36,7 +36,7 @@
 
 ## 结论
 
-Antigravity **当前不支持接入**。官方公开能力更像“任务产物 + 审批策略 + 浏览器验证”，还不是类似 Claude/Cursor/Windsurf 的本地 hooks 模型。
+Antigravity **当前已进入部分支持**。虽然它还不是正式 hooks source，但仓库现在已提供一个 wrapper-first 的 `chat` 启动入口，可观测会话开始、prompt 提交、启动失败，并提示本地日志面位置。
 
 ## 基于本地代码的实现可行性
 
@@ -46,8 +46,9 @@ Antigravity **当前不支持接入**。官方公开能力更像“任务产物 
 - 只能复用 `HookEvent`/`SessionStore` 的“统一事件消费端”；`HookInstaller`、`PermissionHandler`、`HookSocketServer` 基本复用不上。
 
 **可实施方案**
-1. 如果 Antigravity 有稳定产物目录，可新增 watcher，把 artifact 变化转成 `SessionStart` / `Stop` / `Notification`。
-2. 审批类场景更可能需要读取 allow/deny 配置或浏览器验证产物，而不是复用现有 socket 审批。
+1. 当前已新增 wrapper-first `SessionSource.antigravity`，通过 `antigravity chat` 建立最小启动监控。
+2. 如果 Antigravity 有稳定产物目录，可新增 watcher，把 artifact 变化转成 `SessionStart` / `Stop` / `Notification`。
+3. 审批类场景更可能需要读取 allow/deny 配置或浏览器验证产物，而不是复用现有 socket 审批。
 
 **主要阻塞**
-- 目前缺少公开、稳定的本地事件输入面。没有输入面，就没有 source 可接。
+- 当前主要阻塞已经从“完全没有入口”转成“如何从 `~/Library/Application Support/Antigravity/logs` 中提炼稳定的会话/产物信号”。

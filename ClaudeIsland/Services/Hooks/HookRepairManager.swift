@@ -55,7 +55,7 @@ class HookRepairManager: ObservableObject {
     func repairAllNow() {
         let managedSources: [SessionSource] = [
             .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
-            .ampCLI, .pi, .crush, .opencode, .copilot, .qoder, .qoderCLI, .droid, .codebuddy
+            .ampCLI, .pi, .crush, .opencode, .copilot, .antigravity, .qoder, .qoderCLI, .droid, .codebuddy
         ]
         var repaired: [String] = []
 
@@ -97,7 +97,7 @@ class HookRepairManager: ObservableObject {
         // Find which source this config belongs to
         let managedSources: [SessionSource] = [
             .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
-            .ampCLI, .pi, .crush, .opencode, .copilot, .qoder, .qoderCLI, .droid, .codebuddy
+            .ampCLI, .pi, .crush, .opencode, .copilot, .antigravity, .qoder, .qoderCLI, .droid, .codebuddy
         ]
 
         for source in managedSources {

@@ -47,7 +47,7 @@ class HookFileWatcher {
 
         let managedSources: [SessionSource] = [
             .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
-            .ampCLI, .pi, .crush, .opencode, .copilot,
+            .ampCLI, .pi, .crush, .opencode, .copilot, .antigravity,
             .qoder, .qoderCLI, .droid, .codebuddy
         ]
 

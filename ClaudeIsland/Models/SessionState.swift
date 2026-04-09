@@ -18,6 +18,7 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
     case gemini
     case copilot
     case codebuddy
+    case antigravity
     case qoder
     case qoderCLI = "qoder_cli"
     case droid
@@ -55,6 +56,8 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
             self = .copilot
         case "codebuddy":
             self = .codebuddy
+        case "antigravity":
+            self = .antigravity
         case "qoder":
             self = .qoder
         case "qodercli", "qoder_cli":
@@ -92,6 +95,7 @@ enum SessionSource: String, Codable, CaseIterable, Sendable {
         case .gemini: return "Gemini"
         case .copilot: return "Copilot"
         case .codebuddy: return "CodeBuddy"
+        case .antigravity: return "Antigravity"
         case .qoder: return "Qoder"
         case .qoderCLI: return "Qoder CLI"
         case .droid: return "Droid"

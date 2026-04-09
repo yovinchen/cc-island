@@ -33,6 +33,7 @@
 | Amp CLI | 部分支持 | `SessionSource.ampCLI` + plugin + `amp-exec` fallback + `amp-stream` helper |
 | Cline / Cline CLI | 部分支持 | `SessionSource.cline` + `ClineHookSource`，当前先做 hooks 监控与启用诊断 |
 | Qoder CLI | 部分支持 | `SessionSource.qoderCLI` + `claude-island-qodercli-json` wrapper，hooks 仍未拆 source |
+| Antigravity | 部分支持 | `SessionSource.antigravity` + `claude-island-antigravity-chat` wrapper，依赖本地日志作为后续 watcher 线索 |
 | Pi Coding Agent | 部分支持 | `SessionSource.pi` + `pi` / `pi-json` helpers，含 best-effort json 事件恢复 |
 | Crush | 部分支持 | `SessionSource.crush` + wrapper + `CrushLogWatcher` best-effort 结构化日志识别 |
 

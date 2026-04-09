@@ -236,7 +236,7 @@ struct HookStatusSection: View {
 
     private let managedSources: [SessionSource] = [
         .claude, .cline, .codexCLI, .gemini, .cursor, .windsurf, .kimiCLI, .kiroCLI,
-        .ampCLI, .opencode, .copilot, .pi, .crush,
+        .ampCLI, .opencode, .copilot, .pi, .crush, .antigravity,
         .qoder, .qoderCLI, .droid, .codebuddy
     ]
 

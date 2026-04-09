@@ -52,6 +52,11 @@ struct HookInstaller {
         OpenCodeHookSource(),
         CopilotHookSource(),
         HelperOnlySource(
+            sourceType: .antigravity,
+            displayName: "Antigravity",
+            helperNames: ["claude-island-antigravity-chat"]
+        ),
+        HelperOnlySource(
             sourceType: .qoderCLI,
             displayName: "Qoder CLI",
             helperNames: ["claude-island-qodercli-json"]
@@ -150,6 +155,7 @@ struct HookInstaller {
             ("claude-island-amp", "sh", "claude-island-amp"),
             ("claude-island-amp-exec", "sh", "claude-island-amp-exec"),
             ("claude-island-amp-stream", "sh", "claude-island-amp-stream"),
+            ("claude-island-antigravity-chat", "sh", "claude-island-antigravity-chat"),
             ("claude-island-copilot-json", "sh", "claude-island-copilot-json"),
             ("claude-island-kimi-print", "sh", "claude-island-kimi-print"),
             ("claude-island-kiro", "sh", "claude-island-kiro"),
@@ -319,6 +325,12 @@ struct HookInstaller {
         // Qoder: check ~/.qoder
         if fm.fileExists(atPath: "\(home)/.qoder") {
             installed.append(.qoder)
+        }
+
+        // Antigravity
+        if fm.fileExists(atPath: "\(home)/.antigravity") ||
+           fm.fileExists(atPath: "/Applications/Antigravity.app") {
+            installed.append(.antigravity)
         }
 
         // Qoder CLI: check common executable locations

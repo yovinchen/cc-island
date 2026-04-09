@@ -389,6 +389,14 @@ actor SessionStore {
                 return "Project Amp plugins detected under .amp/plugins/; they may augment or override the global Claude Island plugin."
             }
             return nil
+        case .antigravity:
+            let logsRoot = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support/Antigravity/logs")
+                .path
+            if FileManager.default.fileExists(atPath: logsRoot) {
+                return "Antigravity logs detected under ~/Library/Application Support/Antigravity/logs; Claude Island currently treats Antigravity as a wrapper-first integration and can use those logs for future watcher work."
+            }
+            return nil
         case .crush:
             let path = URL(fileURLWithPath: cwd)
                 .appendingPathComponent(".crush/logs/crush.log")

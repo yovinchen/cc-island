@@ -17,7 +17,7 @@
 |------|----------|----------|:--------:|:--------:|:--------:|------|
 | Warp | 宿主级支持 | 宿主识别 / 窗口聚焦 | — | — | — | 不是 hook source |
 | Qoder（IDE hooks） | 正式接入 | `settings.json` hooks | ✅ | ✅ | ✅ | 通过 `permissionDecision` 走隐式审批；项目级 `.qoder/settings*.json` 在存在时也纳入受管安装 |
-| Antigravity | 未接入 | — | — | — | — | 仅 docs / gap 分析 |
+| Antigravity | 部分支持 | wrapper (`antigravity chat`) | ✅ | ✅ | — | 非 hooks source；当前为 wrapper-first 启动监控与日志面提示 |
 | Trae | 未接入 | unsupported marker | — | — | — | 代码里有 `SessionSource.trae`，但未进入 installer |
 | Cursor | 正式接入 | `hooks.json` | ✅ | ✅ | ✅ | Cursor 专属 `{continue, permission}` 响应 |
 | Windsurf | 部分支持 | `hooks.json` | ✅ | ✅ | ⚠️ | deny 已支持 `stderr + exit 2`，workspace 层在存在时已纳入受管安装，并会生成 system-level deploy mirror |
@@ -69,7 +69,7 @@
 |------|:------:|:--------:|:--------:|:--------:|:--------:|------|
 | Warp | — | — | — | ✅ | — | 仅宿主终端识别 |
 | Qoder（IDE hooks） | ✅ | ✅ | ✅ | ✅ | ⚠️ | 正式 hooks source；项目级 `.qoder/settings*.json` 在存在时也纳入受管安装 |
-| Antigravity | — | — | — | — | — | docs-only |
+| Antigravity | ✅ | ✅ | ✅ | — | ⚠️ | wrapper-first 入口已接入；当前主要依赖本地日志目录作为后续 watcher 线索 |
 | Trae | — | — | — | — | — | unsupported |
 | Cursor | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Windsurf | ✅ | ✅ | ✅ | ✅ | ⚠️ | 已补更多 Cascade / MCP 事件映射，workspace hooks 在存在时已纳入受管安装，并会生成 system-level deploy mirror |
