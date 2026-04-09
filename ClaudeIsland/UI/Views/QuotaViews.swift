@@ -849,6 +849,11 @@ struct QuotaSettingsPane: View {
             return VertexAIOAuthCredentialsStore.hasCredentials()
                 ? String(localized: "quota.detected")
                 : String(localized: "quota.not_detected")
+        case .factory:
+            if FactoryTokenStore.bearerToken() != nil || FactoryTokenStore.refreshToken() != nil {
+                return String(localized: "quota.detected")
+            }
+            return record.isConfigured ? String(localized: "quota.detected") : String(localized: "quota.not_detected")
         case .jetbrains:
             return JetBrainsIDEDetector.detectLatestIDE()?.displayName ?? String(localized: "quota.not_detected")
         case .warp:
@@ -865,6 +870,25 @@ struct QuotaSettingsPane: View {
                 return String(localized: "quota.detected")
             }
             return String(localized: "quota.not_detected")
+        }
+
+        if record.id == .alibaba || record.id == .minimax {
+            if let apiAccount = apiTokenAccountName(for: record.id),
+               (QuotaSecretStore.read(account: apiAccount)?.isEmpty == false)
+            {
+                return String(localized: "quota.detected_manual")
+            }
+            if record.isConfigured {
+                return String(localized: "quota.detected")
+            }
+            return String(localized: "quota.not_detected")
+        }
+
+        if record.descriptor.supportsWebCredentialMode && record.isConfigured {
+            if quotaStore.storedSecret(for: record.id).isEmpty == false {
+                return String(localized: "quota.detected_manual")
+            }
+            return String(localized: "quota.detected")
         }
 
         if record.descriptor.supportsManualSecret {

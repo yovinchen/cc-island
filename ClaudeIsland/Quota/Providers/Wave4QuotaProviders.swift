@@ -782,12 +782,31 @@ private enum AlibabaBrowserCookieImporter {
     }()
 
     static func candidateSessions() -> [QuotaBrowserCookieSession] {
-        QuotaBrowserCookieImporter.candidateSessions(
-            domains: cookieDomains,
-            browserOrder: browserOrder,
-            requiredCookieNames: nil,
-            allowDomainFallback: true
-        )
+        let client = BrowserCookieClient()
+        let query = BrowserCookieQuery(domains: cookieDomains)
+        var sessions: [QuotaBrowserCookieSession] = []
+
+        for browser in browserOrder {
+            let regularSessions: [QuotaBrowserCookieSession] = (try? client.records(matching: query, in: browser, logger: nil))?.compactMap { source in
+                let cookies = BrowserCookieClient.makeHTTPCookies(source.records, origin: query.origin)
+                guard AlibabaChromiumCookieFallbackImporter.isAuthenticatedSession(cookies) else { return nil }
+                return QuotaBrowserCookieSession(cookies: cookies, sourceLabel: source.label)
+            } ?? []
+
+            if !regularSessions.isEmpty {
+                sessions.append(contentsOf: regularSessions)
+                continue
+            }
+
+            if browser.usesChromiumProfileStore,
+               let fallback = try? AlibabaChromiumCookieFallbackImporter.importSession(browser: browser, domains: cookieDomains)
+            {
+                sessions.append(fallback)
+            }
+        }
+
+        var seen = Set<String>()
+        return sessions.filter { seen.insert($0.cookieHeader).inserted }
     }
 }
 #endif
@@ -1365,6 +1384,9 @@ struct MiniMaxQuotaProvider: QuotaProvider {
         let sourceMode = QuotaPreferences.sourcePreference(for: .minimax)
         let region = QuotaPreferences.minimaxRegion
         var lastError: Error?
+        let storageTokens = sourceMode == .web || sourceMode == .auto
+            ? MiniMaxLocalStorageImporter.importAccessTokens()
+            : []
 
         if sourceMode != .web, let apiToken = MiniMaxSettingsSupport.apiTokenInfo() {
             do {
@@ -1400,28 +1422,37 @@ struct MiniMaxQuotaProvider: QuotaProvider {
         if sourceMode != .apiKey {
             let candidates = cookieCandidates()
             for candidate in candidates {
-                guard let cookie = MiniMaxCookieSupport.override(from: candidate.cookieHeader) else { continue }
-                do {
-                    let snapshot = try await MiniMaxUsageFetcher.fetchUsage(cookie: cookie, region: region)
-                    if candidate.shouldCacheOnSuccess {
-                        QuotaCookieCache.store(providerID: .minimax, cookieHeader: candidate.cookieHeader, sourceLabel: candidate.provenanceLabel)
-                    }
-                    return QuotaProviderFetchOutcome(
-                        snapshot: snapshot.toQuotaSnapshot(note: candidate.provenanceLabel),
-                        sourceLabel: candidate.sourceLabel,
-                        debugProbe: wave4DebugProbe(
-                            providerID: .minimax,
-                            attemptedSource: candidate.sourceKind.rawValue,
-                            resolvedSource: candidate.sourceKind.rawValue,
-                            provenanceLabel: candidate.provenanceLabel,
-                            requestContext: MiniMaxRegionSupport.codingPlanURL(region: region).absoluteString,
-                            lastValidation: "MiniMax coding plan payload accepted."
+                let allowStorageFallback = QuotaPreferences.webCredentialMode(for: .minimax) != .manual && candidate.sourceKind != .manual
+                let cookieOverrides = enrichedCookieOverrides(
+                    for: candidate,
+                    storageTokens: storageTokens,
+                    allowStorageFallback: allowStorageFallback
+                )
+                for cookie in cookieOverrides {
+                    do {
+                        let snapshot = try await MiniMaxUsageFetcher.fetchUsage(cookie: cookie, region: region)
+                        if candidate.shouldCacheOnSuccess {
+                            QuotaCookieCache.store(providerID: .minimax, cookieHeader: candidate.cookieHeader, sourceLabel: candidate.provenanceLabel)
+                        }
+                        return QuotaProviderFetchOutcome(
+                            snapshot: snapshot.toQuotaSnapshot(note: candidate.provenanceLabel),
+                            sourceLabel: candidate.sourceLabel,
+                            debugProbe: wave4DebugProbe(
+                                providerID: .minimax,
+                                attemptedSource: candidate.sourceKind.rawValue,
+                                resolvedSource: candidate.sourceKind.rawValue,
+                                provenanceLabel: candidate.provenanceLabel,
+                                requestContext: MiniMaxRegionSupport.codingPlanURL(region: region).absoluteString,
+                                lastValidation: cookie.authorizationToken == nil
+                                    ? "MiniMax coding plan payload accepted."
+                                    : "MiniMax coding plan payload accepted with local storage token/group fallback."
+                            )
                         )
-                    )
-                } catch {
-                    lastError = error
-                    if candidate.sourceKind == .cache {
-                        QuotaCookieCache.clear(providerID: .minimax)
+                    } catch {
+                        lastError = error
+                        if candidate.sourceKind == .cache {
+                            QuotaCookieCache.clear(providerID: .minimax)
+                        }
                     }
                 }
             }
@@ -1450,11 +1481,47 @@ struct MiniMaxQuotaProvider: QuotaProvider {
             browserSessions: sessions
         )
     }
+
+    private func enrichedCookieOverrides(
+        for candidate: QuotaResolvedCookieCandidate,
+        storageTokens: [MiniMaxLocalStorageTokenInfo],
+        allowStorageFallback: Bool
+    ) -> [MiniMaxCookieOverride] {
+        guard let base = MiniMaxCookieSupport.override(from: candidate.cookieHeader) else {
+            return []
+        }
+        guard allowStorageFallback else {
+            return [base]
+        }
+
+        let normalizedCandidateLabel = MiniMaxLocalStorageImporter.normalizeSourceLabel(candidate.provenanceLabel)
+        let matchingTokens = storageTokens.filter {
+            MiniMaxLocalStorageImporter.normalizeSourceLabel($0.sourceLabel) == normalizedCandidateLabel
+        }
+        let fallbackTokens = matchingTokens.isEmpty ? storageTokens : matchingTokens
+
+        var results: [MiniMaxCookieOverride] = [base]
+        for token in fallbackTokens {
+            results.append(
+                MiniMaxCookieOverride(
+                    cookieHeader: base.cookieHeader,
+                    authorizationToken: base.authorizationToken ?? token.accessToken,
+                    groupID: base.groupID ?? token.groupID
+                )
+            )
+        }
+
+        var seen = Set<String>()
+        return results.filter { override in
+            let key = "\(override.cookieHeader)|\(override.authorizationToken ?? "")|\(override.groupID ?? "")"
+            return seen.insert(key).inserted
+        }
+    }
 }
 
 // MARK: - Factory
 
-private enum FactoryQuotaError: LocalizedError, Sendable {
+enum FactoryQuotaError: LocalizedError, Sendable {
     case missingCookie
     case notLoggedIn
     case apiError(String)
@@ -1586,13 +1653,25 @@ private enum FactoryUsageFetcher {
     static let appBaseURL = URL(string: "https://app.factory.ai")!
     static let authBaseURL = URL(string: "https://auth.factory.ai")!
     static let apiBaseURL = URL(string: "https://api.factory.ai")!
+    private static let staleTokenCookieNames: Set<String> = ["access-token", "__recent_auth"]
+    private static let sessionCookieNames: Set<String> = ["session", "wos-session"]
+    private static let authSessionCookieNames: Set<String> = [
+        "__Secure-next-auth.session-token",
+        "next-auth.session-token",
+        "__Secure-authjs.session-token",
+        "authjs.session-token",
+    ]
 
     static func fetchUsage(cookieHeader: String, now: Date = Date()) async throws -> FactoryQuotaUsageSnapshot {
-        let baseURLs = [appBaseURL, authBaseURL, apiBaseURL]
+        try await fetchUsage(cookieHeader: cookieHeader, bearerToken: bearerToken(fromHeader: cookieHeader), now: now)
+    }
+
+    static func fetchUsage(bearerToken: String, now: Date = Date()) async throws -> FactoryQuotaUsageSnapshot {
+        let baseURLs = [apiBaseURL, appBaseURL]
         var lastError: Error?
         for baseURL in baseURLs {
             do {
-                return try await fetchUsage(cookieHeader: cookieHeader, baseURL: baseURL, now: now)
+                return try await fetchUsage(cookieHeader: "", bearerToken: bearerToken, baseURL: baseURL, now: now)
             } catch {
                 lastError = error
             }
@@ -1600,10 +1679,94 @@ private enum FactoryUsageFetcher {
         throw lastError ?? FactoryQuotaError.notLoggedIn
     }
 
-    private static func fetchUsage(cookieHeader: String, baseURL: URL, now: Date) async throws -> FactoryQuotaUsageSnapshot {
-        let bearerToken = CookieHeaderNormalizer.pairs(from: cookieHeader)
-            .first(where: { $0.name == "access-token" })?
-            .value
+    static func fetchUsage(cookieHeader: String, bearerToken: String?, now: Date = Date()) async throws -> FactoryQuotaUsageSnapshot {
+        let baseURLs = baseURLCandidates(fromCookieHeader: cookieHeader, default: appBaseURL)
+        var lastError: Error?
+        for baseURL in baseURLs {
+            do {
+                return try await fetchUsageWithRetry(cookieHeader: cookieHeader, bearerToken: bearerToken, baseURL: baseURL, now: now)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError ?? FactoryQuotaError.notLoggedIn
+    }
+
+    private static func fetchUsageWithRetry(
+        cookieHeader: String,
+        bearerToken: String?,
+        baseURL: URL,
+        now: Date
+    ) async throws -> FactoryQuotaUsageSnapshot {
+        do {
+            return try await fetchUsage(cookieHeader: cookieHeader, bearerToken: bearerToken, baseURL: baseURL, now: now)
+        } catch let error as FactoryQuotaError {
+            if case .notLoggedIn = error, bearerToken != nil {
+                return try await fetchUsage(cookieHeader: cookieHeader, bearerToken: nil, baseURL: baseURL, now: now)
+            }
+
+            if case let .apiError(message) = error, message.contains("HTTP 409") {
+                var lastError: Error = error
+                if bearerToken != nil {
+                    do {
+                        return try await fetchUsage(cookieHeader: cookieHeader, bearerToken: nil, baseURL: baseURL, now: now)
+                    } catch {
+                        lastError = error
+                    }
+                }
+
+                let sourceCookies = CookieHeaderNormalizer.pairs(from: cookieHeader).compactMap(makeCookiePairCookie)
+                let retries: [(HTTPCookie) -> Bool] = [
+                    { !staleTokenCookieNames.contains($0.name) },
+                    { !sessionCookieNames.contains($0.name) },
+                    { !staleTokenCookieNames.contains($0.name) && !sessionCookieNames.contains($0.name) },
+                ]
+
+                for predicate in retries {
+                    let filtered = sourceCookies.filter(predicate)
+                    guard filtered.count < sourceCookies.count else { continue }
+                    let filteredHeader = Self.cookieHeader(from: filtered)
+                    do {
+                        return try await fetchUsage(
+                            cookieHeader: filteredHeader,
+                            bearerToken: Self.bearerToken(fromHeader: filteredHeader),
+                            baseURL: baseURL,
+                            now: now
+                        )
+                    } catch {
+                        lastError = error
+                    }
+                }
+
+                let authOnly = sourceCookies.filter {
+                    authSessionCookieNames.contains($0.name) || $0.name == "__Host-authjs.csrf-token"
+                }
+                if !authOnly.isEmpty, authOnly.count < sourceCookies.count {
+                    let filteredHeader = Self.cookieHeader(from: authOnly)
+                    do {
+                        return try await fetchUsage(
+                            cookieHeader: filteredHeader,
+                            bearerToken: Self.bearerToken(fromHeader: filteredHeader),
+                            baseURL: baseURL,
+                            now: now
+                        )
+                    } catch {
+                        lastError = error
+                    }
+                }
+
+                throw lastError
+            }
+            throw error
+        }
+    }
+
+    private static func fetchUsage(
+        cookieHeader: String,
+        bearerToken: String?,
+        baseURL: URL,
+        now: Date
+    ) async throws -> FactoryQuotaUsageSnapshot {
         let auth = try await fetchAuthInfo(cookieHeader: cookieHeader, bearerToken: bearerToken, baseURL: baseURL)
         let usage = try await fetchUsageData(cookieHeader: cookieHeader, bearerToken: bearerToken, baseURL: baseURL)
         let periodEnd = usage.usage?.endDate.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000.0) }
@@ -1632,6 +1795,40 @@ private enum FactoryUsageFetcher {
             return 0
         }
         return min(100, max(0, Double(used) / Double(allowance) * 100.0))
+    }
+
+    private static func baseURLCandidates(fromCookieHeader cookieHeader: String, default baseURL: URL) -> [URL] {
+        let cookieNames = Set(CookieHeaderNormalizer.pairs(from: cookieHeader).map(\.name))
+        var candidates: [URL] = []
+        if !cookieNames.isDisjoint(with: authSessionCookieNames) {
+            candidates.append(authBaseURL)
+        }
+        candidates.append(apiBaseURL)
+        candidates.append(appBaseURL)
+        candidates.append(baseURL)
+
+        var seen = Set<String>()
+        return candidates.filter { seen.insert($0.absoluteString).inserted }
+    }
+
+    static func bearerToken(fromHeader cookieHeader: String) -> String? {
+        CookieHeaderNormalizer.pairs(from: cookieHeader)
+            .first(where: { $0.name == "access-token" })?
+            .value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func cookieHeader(from cookies: [HTTPCookie]) -> String {
+        cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
+    }
+
+    private static func makeCookiePairCookie(_ pair: CookieHeaderNormalizer.Pair) -> HTTPCookie? {
+        HTTPCookie(properties: [
+            .domain: "factory.ai",
+            .path: "/",
+            .name: pair.name,
+            .value: pair.value,
+        ])
     }
 
     private static func fetchAuthInfo(cookieHeader: String, bearerToken: String?, baseURL: URL) async throws -> FactoryAuthResponse {
@@ -1695,7 +1892,15 @@ struct FactoryQuotaProvider: QuotaProvider {
     let descriptor = QuotaProviderRegistry.descriptor(for: .factory)
 
     func isConfigured() -> Bool {
-        !cookieCandidates().isEmpty
+        let mode = QuotaPreferences.webCredentialMode(for: .factory)
+        if mode == .manual {
+            return cookieCandidates().contains(where: { $0.sourceKind == .manual })
+        }
+        return !cookieCandidates().isEmpty
+            || FactoryTokenStore.bearerToken() != nil
+            || FactoryTokenStore.refreshToken() != nil
+            || !FactoryLocalStorageImporter.importWorkOSTokens().isEmpty
+            || !FactoryWorkOSAuthenticator.browserCookieCandidates().isEmpty
     }
 
     func fetch() async throws -> QuotaSnapshot {
@@ -1703,14 +1908,15 @@ struct FactoryQuotaProvider: QuotaProvider {
     }
 
     func fetchOutcome() async throws -> QuotaProviderFetchOutcome {
+        let mode = QuotaPreferences.webCredentialMode(for: .factory)
         let candidates = cookieCandidates()
         let requestContext = "https://app.factory.ai/api/organization/subscription/usage"
-        guard !candidates.isEmpty else {
+        guard mode != .manual || !candidates.isEmpty else {
             throw wave4Failure(
                 providerID: .factory,
                 message: "Droid session cookie not configured.",
                 sourceLabel: "Web login",
-                attemptedSource: QuotaPreferences.webCredentialMode(for: .factory).rawValue,
+                attemptedSource: mode.rawValue,
                 requestContext: requestContext
             )
         }
@@ -1721,6 +1927,9 @@ struct FactoryQuotaProvider: QuotaProvider {
                 let snapshot = try await FactoryUsageFetcher.fetchUsage(cookieHeader: candidate.cookieHeader)
                 if candidate.shouldCacheOnSuccess {
                     QuotaCookieCache.store(providerID: .factory, cookieHeader: candidate.cookieHeader, sourceLabel: candidate.provenanceLabel)
+                }
+                if let bearer = FactoryUsageFetcher.bearerToken(fromHeader: candidate.cookieHeader), !bearer.isEmpty {
+                    FactoryTokenStore.setBearerToken(bearer, sourceLabel: candidate.provenanceLabel)
                 }
                 return QuotaProviderFetchOutcome(
                     snapshot: snapshot.toQuotaSnapshot(note: candidate.provenanceLabel),
@@ -1742,11 +1951,145 @@ struct FactoryQuotaProvider: QuotaProvider {
             }
         }
 
+        guard mode != .manual else {
+            throw wave4Failure(
+                providerID: .factory,
+                message: lastError?.localizedDescription ?? "Droid session cookie not configured.",
+                sourceLabel: "Web login",
+                attemptedSource: candidates.map(\.sourceLabel).joined(separator: " -> "),
+                requestContext: requestContext
+            )
+        }
+
+        if let storedBearer = FactoryTokenStore.bearerToken() {
+            do {
+                let snapshot = try await FactoryUsageFetcher.fetchUsage(bearerToken: storedBearer.value)
+                return QuotaProviderFetchOutcome(
+                    snapshot: snapshot.toQuotaSnapshot(note: storedBearer.sourceLabel),
+                    sourceLabel: storedBearer.sourceLabel,
+                    debugProbe: wave4DebugProbe(
+                        providerID: .factory,
+                        attemptedSource: "stored bearer",
+                        resolvedSource: "stored bearer",
+                        provenanceLabel: storedBearer.sourceLabel,
+                        requestContext: requestContext,
+                        lastValidation: "Droid bearer token accepted."
+                    )
+                )
+            } catch {
+                lastError = error
+                FactoryTokenStore.setBearerToken(nil)
+            }
+        }
+
+        if let storedRefresh = FactoryTokenStore.refreshToken() {
+            do {
+                let auth = try await FactoryWorkOSAuthenticator.fetchAccessToken(refreshToken: storedRefresh.value)
+                FactoryTokenStore.setBearerToken(auth.access_token, sourceLabel: storedRefresh.sourceLabel)
+                if let newRefresh = auth.refresh_token {
+                    FactoryTokenStore.setRefreshToken(newRefresh, sourceLabel: storedRefresh.sourceLabel)
+                }
+                let snapshot = try await FactoryUsageFetcher.fetchUsage(bearerToken: auth.access_token)
+                return QuotaProviderFetchOutcome(
+                    snapshot: snapshot.toQuotaSnapshot(note: storedRefresh.sourceLabel),
+                    sourceLabel: storedRefresh.sourceLabel,
+                    debugProbe: wave4DebugProbe(
+                        providerID: .factory,
+                        attemptedSource: "stored refresh",
+                        resolvedSource: "stored refresh",
+                        provenanceLabel: storedRefresh.sourceLabel,
+                        requestContext: "https://api.workos.com/user_management/authenticate",
+                        lastValidation: "WorkOS refresh token accepted."
+                    )
+                )
+            } catch {
+                lastError = error
+                if FactoryWorkOSAuthenticator.isInvalidGrant(error) || error.localizedDescription.localizedCaseInsensitiveContains("missing refresh token") {
+                    FactoryTokenStore.setRefreshToken(nil)
+                }
+            }
+        }
+
+        for token in FactoryLocalStorageImporter.importWorkOSTokens() {
+            do {
+                if let accessToken = token.accessToken, !accessToken.isEmpty {
+                    let snapshot = try await FactoryUsageFetcher.fetchUsage(bearerToken: accessToken)
+                    FactoryTokenStore.setBearerToken(accessToken, sourceLabel: "Local storage: \(token.sourceLabel)")
+                    FactoryTokenStore.setRefreshToken(token.refreshToken, sourceLabel: "Local storage: \(token.sourceLabel)")
+                    return QuotaProviderFetchOutcome(
+                        snapshot: snapshot.toQuotaSnapshot(note: "Local storage: \(token.sourceLabel)"),
+                        sourceLabel: "Local storage",
+                        debugProbe: wave4DebugProbe(
+                            providerID: .factory,
+                            attemptedSource: "local storage",
+                            resolvedSource: "local storage",
+                            provenanceLabel: token.sourceLabel,
+                            requestContext: requestContext,
+                            lastValidation: "Factory local-storage access token accepted."
+                        )
+                    )
+                }
+
+                let auth = try await FactoryWorkOSAuthenticator.fetchAccessToken(
+                    refreshToken: token.refreshToken,
+                    organizationID: token.organizationID
+                )
+                FactoryTokenStore.setBearerToken(auth.access_token, sourceLabel: "Local storage: \(token.sourceLabel)")
+                FactoryTokenStore.setRefreshToken(auth.refresh_token ?? token.refreshToken, sourceLabel: "Local storage: \(token.sourceLabel)")
+                let snapshot = try await FactoryUsageFetcher.fetchUsage(bearerToken: auth.access_token)
+                return QuotaProviderFetchOutcome(
+                    snapshot: snapshot.toQuotaSnapshot(note: "Local storage: \(token.sourceLabel)"),
+                    sourceLabel: "Local storage",
+                    debugProbe: wave4DebugProbe(
+                        providerID: .factory,
+                        attemptedSource: "local storage refresh",
+                        resolvedSource: "local storage refresh",
+                        provenanceLabel: token.sourceLabel,
+                        requestContext: "https://api.workos.com/user_management/authenticate",
+                        lastValidation: "Factory local-storage refresh token accepted."
+                    )
+                )
+            } catch {
+                lastError = error
+            }
+        }
+
+        for session in FactoryWorkOSAuthenticator.browserCookieCandidates() {
+            do {
+                let auth = try await FactoryWorkOSAuthenticator.fetchAccessTokenWithCookies(cookieHeader: session.cookieHeader)
+                FactoryTokenStore.setBearerToken(auth.access_token, sourceLabel: "WorkOS cookies: \(session.sourceLabel)")
+                if let refresh = auth.refresh_token {
+                    FactoryTokenStore.setRefreshToken(refresh, sourceLabel: "WorkOS cookies: \(session.sourceLabel)")
+                }
+                let snapshot = try await FactoryUsageFetcher.fetchUsage(bearerToken: auth.access_token)
+                return QuotaProviderFetchOutcome(
+                    snapshot: snapshot.toQuotaSnapshot(note: "WorkOS cookies: \(session.sourceLabel)"),
+                    sourceLabel: "WorkOS cookies",
+                    debugProbe: wave4DebugProbe(
+                        providerID: .factory,
+                        attemptedSource: "workos cookies",
+                        resolvedSource: "workos cookies",
+                        provenanceLabel: session.sourceLabel,
+                        requestContext: "https://api.workos.com/user_management/authenticate",
+                        lastValidation: "WorkOS browser cookies accepted."
+                    )
+                )
+            } catch {
+                lastError = error
+            }
+        }
+
         throw wave4Failure(
             providerID: .factory,
             message: lastError?.localizedDescription ?? "Droid session cookie not configured.",
             sourceLabel: "Web login",
-            attemptedSource: candidates.map(\.sourceLabel).joined(separator: " -> "),
+            attemptedSource: [
+                candidates.map(\.sourceLabel).joined(separator: " -> "),
+                "stored bearer",
+                "stored refresh",
+                "local storage",
+                "workos cookies",
+            ].filter { !$0.isEmpty }.joined(separator: " -> "),
             requestContext: requestContext
         )
     }
