@@ -12,6 +12,12 @@ struct QuotaSettingsPane: View {
         let color: Color
     }
 
+    private struct CopilotAuthorizationContext {
+        let userCode: String
+        let verificationURI: String
+        let expiresAt: Date
+    }
+
     @ObservedObject private var quotaStore = QuotaStore.shared
 
     @State private var selectedProviderID: QuotaProviderID = .codex
@@ -24,6 +30,8 @@ struct QuotaSettingsPane: View {
     @State private var sessionImportFeedback: SessionImportFeedback?
     @State private var authenticatingCopilot = false
     @State private var copilotLoginFeedback: SessionImportFeedback?
+    @State private var copilotAuthorizationContext: CopilotAuthorizationContext?
+    @State private var copilotLoginTask: Task<Void, Never>?
 
     private var selectedRecord: QuotaProviderRecord? {
         quotaStore.record(for: selectedProviderID) ?? quotaStore.orderedRecords.first
@@ -71,6 +79,10 @@ struct QuotaSettingsPane: View {
             loadProviderPreferences()
             sessionImportFeedback = nil
             copilotLoginFeedback = nil
+            if selectedProviderID != .copilot {
+                cancelCopilotAuthentication()
+                copilotAuthorizationContext = nil
+            }
         }
         .onChange(of: quotaStore.orderedRecords.map(\.id)) { _, _ in
             ensureSelection()
@@ -441,8 +453,15 @@ struct QuotaSettingsPane: View {
                     caption: String(localized: "quota.copilot_sign_in_hint")
                 ) {
                     if authenticatingCopilot {
-                        ProgressView()
-                            .controlSize(.small)
+                        HStack(spacing: 10) {
+                            ProgressView()
+                                .controlSize(.small)
+
+                            Button(String(localized: "quota.copilot_sign_in_cancel")) {
+                                cancelCopilotAuthentication()
+                            }
+                            .buttonStyle(SettingsButtonStyle(isDestructive: true))
+                        }
                     } else {
                         Button(quotaStore.storedSecret(for: .copilot).isEmpty
                                ? String(localized: "quota.copilot_sign_in_action")
@@ -450,6 +469,37 @@ struct QuotaSettingsPane: View {
                             Task { await authenticateCopilot() }
                         }
                         .buttonStyle(SettingsButtonStyle())
+                    }
+                }
+
+                if let copilotAuthorizationContext {
+                    VStack(alignment: .leading, spacing: 10) {
+                        quotaTextBlock(
+                            title: String(localized: "quota.copilot_sign_in_code"),
+                            text: copilotAuthorizationContext.userCode,
+                            color: .white.opacity(0.82)
+                        )
+
+                        Text(
+                            String(
+                                format: String(localized: "quota.copilot_sign_in_expires %@"),
+                                relativeText(for: copilotAuthorizationContext.expiresAt)
+                            )
+                        )
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.55))
+
+                        HStack(spacing: 10) {
+                            Button(String(localized: "quota.copilot_sign_in_copy_code")) {
+                                copyCopilotUserCode(copilotAuthorizationContext.userCode)
+                            }
+                            .buttonStyle(SettingsButtonStyle())
+
+                            Button(String(localized: "quota.copilot_sign_in_open_browser")) {
+                                openCopilotVerificationURL(copilotAuthorizationContext.verificationURI)
+                            }
+                            .buttonStyle(SettingsButtonStyle())
+                        }
                     }
                 }
 
@@ -830,41 +880,69 @@ struct QuotaSettingsPane: View {
     private func authenticateCopilot() async {
         guard !authenticatingCopilot else { return }
         authenticatingCopilot = true
-        defer { authenticatingCopilot = false }
+        copilotLoginFeedback = nil
+        copilotAuthorizationContext = nil
+        defer {
+            authenticatingCopilot = false
+            copilotLoginTask = nil
+        }
 
         let flow = CopilotDeviceFlow()
 
         do {
             let code = try await flow.requestDeviceCode()
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(code.userCode, forType: .string)
-
-            if let url = URL(string: code.verificationUri) {
-                NSWorkspace.shared.open(url)
-            }
+            let authorizationContext = CopilotAuthorizationContext(
+                userCode: code.userCode,
+                verificationURI: code.verificationUri,
+                expiresAt: Date().addingTimeInterval(TimeInterval(code.expiresIn))
+            )
+            copyCopilotUserCode(code.userCode)
+            openCopilotVerificationURL(code.verificationUri)
+            copilotAuthorizationContext = authorizationContext
 
             copilotLoginFeedback = SessionImportFeedback(
-                message: String(
-                    format: String(localized: "quota.copilot_sign_in_waiting %@ %@"),
-                    code.userCode,
-                    code.verificationUri
-                ),
+                message: String(localized: "quota.copilot_sign_in_waiting"),
                 color: .white.opacity(0.7)
             )
 
-            let token = try await flow.pollForToken(deviceCode: code.deviceCode, interval: code.interval)
-            secretValue = token
-            quotaStore.saveSecret(token, for: .copilot)
-            loadSecretIfNeeded(force: true)
-            quotaStore.userVisibleRefresh(providerID: .copilot)
-            copilotLoginFeedback = SessionImportFeedback(
-                message: String(localized: "quota.copilot_sign_in_success"),
-                color: TerminalColors.green
-            )
+            let task = Task {
+                do {
+                    let token = try await flow.pollForToken(deviceCode: code.deviceCode, interval: code.interval)
+                    await MainActor.run {
+                        secretValue = token
+                        quotaStore.saveSecret(token, for: .copilot)
+                        loadSecretIfNeeded(force: true)
+                        quotaStore.userVisibleRefresh(providerID: .copilot)
+                        copilotAuthorizationContext = nil
+                        copilotLoginFeedback = SessionImportFeedback(
+                            message: String(localized: "quota.copilot_sign_in_success"),
+                            color: TerminalColors.green
+                        )
+                    }
+                } catch is CancellationError {
+                    await MainActor.run {
+                        copilotLoginFeedback = SessionImportFeedback(
+                            message: String(localized: "quota.copilot_sign_in_cancelled"),
+                            color: .white.opacity(0.5)
+                        )
+                    }
+                } catch {
+                    await MainActor.run {
+                        copilotLoginFeedback = SessionImportFeedback(
+                            message: String(
+                                format: String(localized: "quota.copilot_sign_in_failed %@"),
+                                error.localizedDescription
+                            ),
+                            color: TerminalColors.red
+                        )
+                    }
+                }
+            }
+            copilotLoginTask = task
+            await task.value
         } catch is CancellationError {
             copilotLoginFeedback = SessionImportFeedback(
-                message: String(localized: "quota.import_session_cancelled"),
+                message: String(localized: "quota.copilot_sign_in_cancelled"),
                 color: .white.opacity(0.5)
             )
         } catch {
@@ -876,6 +954,24 @@ struct QuotaSettingsPane: View {
                 color: TerminalColors.red
             )
         }
+    }
+
+    @MainActor
+    private func cancelCopilotAuthentication() {
+        copilotLoginTask?.cancel()
+    }
+
+    @MainActor
+    private func copyCopilotUserCode(_ userCode: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(userCode, forType: .string)
+    }
+
+    @MainActor
+    private func openCopilotVerificationURL(_ rawURL: String) {
+        guard let url = URL(string: rawURL) else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 

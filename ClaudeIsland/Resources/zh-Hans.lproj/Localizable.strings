@@ -89,9 +89,15 @@
 "quota.copilot_sign_in_hint" = "通过 GitHub device flow 自动获取 Copilot token，而不是手动粘贴。";
 "quota.copilot_sign_in_action" = "使用 GitHub 登录";
 "quota.copilot_sign_in_reauth" = "重新授权";
-"quota.copilot_sign_in_waiting %@ %@" = "GitHub 验证码 %@ 已复制到剪贴板，并已打开 %@。正在等待授权完成…";
+"quota.copilot_sign_in_waiting" = "浏览器已打开，请在 GitHub 完成授权，并保持此窗口开启。";
 "quota.copilot_sign_in_success" = "GitHub 授权完成，正在刷新 Copilot 额度…";
 "quota.copilot_sign_in_failed %@" = "GitHub 登录失败：%@";
+"quota.copilot_sign_in_cancel" = "取消";
+"quota.copilot_sign_in_cancelled" = "GitHub 登录已取消。";
+"quota.copilot_sign_in_code" = "GitHub 验证码";
+"quota.copilot_sign_in_copy_code" = "复制验证码";
+"quota.copilot_sign_in_open_browser" = "打开浏览器";
+"quota.copilot_sign_in_expires %@" = "将于 %@ 过期";
 "quota.configuration" = "配置";
 "quota.source_mode" = "刷新来源";
 "quota.cli_binary" = "CLI 路径";
