@@ -86,7 +86,7 @@
 | Codex CLI | ✅ | ✅ | ✅ | ✅ | ⚠️ | notify + CLI hooks，细节仍在打磨 |
 | Codex Desktop | — | — | — | — | ✅ | transcript / rate-limit / reasoning 解析 |
 | Gemini CLI | ✅ | ✅ | ✅ | ✅ | ✅ | Gemini 专属生命周期已接入为通知类事件，项目级 `.gemini/settings.json` 在存在时也纳入受管安装 |
-| Copilot CLI | ✅ | ✅ | ✅ | ✅ | ✅ | hooks 仍是主入口，同时已有 `copilot-json` helper（含基础工具事件回放）、真实 hooks 样本、`events.jsonl` 失败补充观察，以及非零退出码失败重映射 |
+| Copilot CLI | ✅ | ✅ | ✅ | ✅ | ✅ | hooks 仍是主入口，同时已有 `copilot-json` helper（含基础工具事件回放和非零退出码失败识别）、真实 hooks 样本、`events.jsonl` 失败补充观察，以及非零退出码失败重映射 |
 | OpenCode | ✅ | ✅ | ✅ | ✅ | ✅ | JS plugin + tool/result 提取 |
 | Droid | ✅ | ✅ | ✅ | ✅ | — | 正式 hooks source |
 | Kimi CLI | ✅ | ✅ | ✅ | — | ✅ | hooks 仍是主入口，`kimi-print` helper 已进入 auto-repair / watcher，并补充观察 `wire.jsonl` 的状态/失败信号 |

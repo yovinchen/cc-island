@@ -97,6 +97,7 @@ GitHub Copilot CLI（2026-02 GA）官方支持以下 Hook 事件：
 - 当前还会同步安装 `~/.claude-island/bin/claude-island-copilot-json`，作为 `copilot -p --output-format json` 的最小 helper 入口。
 - 当前安装器会统一改写为 launcher 路径，并清理已知的旧 `VibeIsland` Copilot hook 条目，减少因遗留 command 失败导致整组 hooks 记为失败。
 - 基于本机真实 tool-using JSON 样本，`copilot-json` 当前也已开始兼容 `toolRequests`、`tool.execution_start`、`tool.execution_complete`，可回放基础 `PreToolUse / PostToolUse`。
+- 基于本机真实失败样本，`copilot-json` 当前也会在 `tool.execution_complete.success` 仍为 true、但 `textResultForLlm` 已明确带非零退出码时，把该结果视为失败态。
 - 当前还会补充观察最新 `~/.copilot/session-state/*/events.jsonl`，把真实 `hook.end` 失败信号回流成通知，便于定位 hooks 本身的运行错误。
 - 当前还已经拿到一条真实 tool-using hooks 样本：`preToolUse / postToolUse / notification / agentStop / sessionEnd` 在本机 `events.jsonl` 中均已出现且 `success:true`。
 - 该真实样本也证明 `preToolUse` 输入里会出现 `toolCalls[]`（例如同时包含 `report_intent` 和真实 `bash` 调用）；当前 `EventMapper` 已优先挑出真正的执行型工具，避免把辅助调用误当成审批目标。

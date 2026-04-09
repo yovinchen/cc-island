@@ -149,6 +149,16 @@ def emit_tool_end(tool_id, result, is_error=False):
         "error": text if is_error else None,
     })
 
+def infer_failure_from_result(result):
+    if isinstance(result, dict):
+        text = result.get("textResultForLlm") or result.get("textResult") or result.get("sessionLog") or result.get("content")
+        if isinstance(text, str):
+            import re
+            match = re.search(r"<exited with exit code ([0-9]+)>", text)
+            if match and int(match.group(1)) != 0:
+                return True
+    return False
+
 for raw in stream_path.read_text().splitlines():
     raw = raw.strip()
     if not raw:
@@ -185,7 +195,11 @@ for raw in stream_path.read_text().splitlines():
     elif event_type == "tool.execution_complete":
         success = data.get("success")
         result = data.get("result") if isinstance(data.get("result"), dict) else data.get("result")
-        emit_tool_end(data.get("toolCallId"), result, is_error=(success is False))
+        emit_tool_end(
+            data.get("toolCallId"),
+            result,
+            is_error=(success is False) or infer_failure_from_result(result)
+        )
     elif event_type == "result":
         if obj.get("exitCode") not in (0, None):
             remember_error(data.get("message") or obj.get("message") or "Copilot JSON mode failed")
